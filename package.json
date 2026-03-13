@@ -1,0 +1,14 @@
+{
+  "name": "ksh",
+  "version": "1.0.0",
+  "description": "Korean School House - Grails PWA with HTMX and Tailwind CSS",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./grails-app/assets/stylesheets/tailwind.css --watch",
+    "build:css:prod": "tailwindcss -i ./src/input.css -o ./grails-app/assets/stylesheets/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10"
+  }
+}

@@ -1,0 +1,93 @@
+# Grails specific
+.grails/
+build/
+out/
+web-app/plugins/*
+!gradle-wrapper.jar
+*.db
+*.trace.db
+.coverage/
+.idea_modules/
+*.war
+
+# DB Stuff
+postgres/data
+postgres/docker-entrypoint-initdb.d/*
+
+# Gradle
+.gradle/
+!gradle/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+*.ids
+*.orig
+/out/
+/classes/
+/plugins/
+/settings/
+workspace.xml
+usage.statistics.xml
+shelf/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+.AppleDB
+.AppleDesktop
+.apdisk
+**/.DS_Store
+
+# Logs and temporary files
+*.log
+*.log.*
+/logs/
+/target/
+/tmp/
+/test/reports/
+/geb-reports/
+bin/
+
+# H2 Database
+*.h2.db
+*.lock.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Build scan
+build-scan.pid
+
+# VSCode
+.vscode/
+
+# Dependency directories
+node_modules/
+
+# Editor directories and files
+.project
+.settings
+.classpath
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# App data
+ksh_storage/
+ksh_data/
+
+# Internal docs
+app.md
+design.md
+deploy.sh
