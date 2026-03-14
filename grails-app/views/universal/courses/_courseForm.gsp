@@ -17,7 +17,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
     <h2 class="text-xl font-bold text-stone-800 mb-6">${isEdit ? 'Edit Course' : 'Create Course'}</h2>
 
-    <form hx-${isEdit ? 'put' : 'post'}="${isEdit ? '/api/universal/Course/' + course.id + '?domainName=Course&refreshId=' + course.id : '/api/universal/Course?domainName=Course'}"
+    <form hx-post="${isEdit ? '/universal/update/' + course.id + '?domainName=Course&refreshId=' + course.id : '/universal/save?domainName=Course'}"
           hx-vals='{"template": "lessons/manage", "data[user]": "currentUser"}'
           hx-target="#content"
           hx-swap="innerHTML"

@@ -69,7 +69,7 @@
                 </g:else>
             </g:if>
             <g:else>
-                <form hx-post="/api/universal/CourseEnrollment?domainName=CourseEnrollment"
+                <form hx-post="/universal/save?domainName=CourseEnrollment"
                       hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser"}'
                       hx-target="#content"
                       hx-swap="innerHTML"
