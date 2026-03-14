@@ -52,18 +52,36 @@
 
         <!-- Enroll button -->
         <g:if test="${user}">
-            <form hx-post="/api/universal/CourseEnrollment?domainName=CourseEnrollment"
-                  hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser"}'
-                  hx-target="#content"
-                  hx-swap="innerHTML"
-                  class="mb-6">
-                <input type="hidden" name="user.id" value="${user.id}"/>
-                <input type="hidden" name="course.id" value="${course.id}"/>
-                <button type="submit"
-                        class="w-full py-3 px-4 rounded-lg text-white font-medium bg-rose-700 hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors text-base">
-                    ${course.costKCredits > 0 ? 'Purchase for ' + course.costKCredits + ' K-Credits' : 'Enroll for Free'}
-                </button>
-            </form>
+            <%
+                def alreadyEnrolled = ksh.CourseEnrollment.findByUserAndCourse(user, course) != null
+            %>
+            <g:if test="${alreadyEnrolled}">
+                <g:if test="${course.scormLaunchUrl}">
+                    <a href="/scorm/player/${course.id}"
+                       class="mb-6 w-full py-3 px-4 rounded-lg text-center text-white font-medium bg-rose-700 hover:bg-rose-800 block text-base min-h-[44px]">
+                        Launch Course
+                    </a>
+                </g:if>
+                <g:else>
+                    <div class="mb-6 w-full py-3 px-4 rounded-lg text-center text-green-700 font-medium bg-green-50 border border-green-200 text-base">
+                        Already enrolled
+                    </div>
+                </g:else>
+            </g:if>
+            <g:else>
+                <form hx-post="/api/universal/CourseEnrollment?domainName=CourseEnrollment"
+                      hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser"}'
+                      hx-target="#content"
+                      hx-swap="innerHTML"
+                      class="mb-6">
+                    <input type="hidden" name="user.id" value="${user.id}"/>
+                    <input type="hidden" name="course.id" value="${course.id}"/>
+                    <button type="submit"
+                            class="w-full py-3 px-4 rounded-lg text-white font-medium bg-rose-700 hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors text-base">
+                        ${course.costKCredits > 0 ? 'Purchase for ' + course.costKCredits + ' K-Credits' : 'Enroll for Free'}
+                    </button>
+                </form>
+            </g:else>
         </g:if>
 
         <!-- Description -->

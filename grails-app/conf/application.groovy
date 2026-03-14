@@ -1,3 +1,9 @@
+// File upload limits
+def maxFileSize = 500 * 1024 * 1024 // 500MB
+def maxRequestSize = 500 * 1024 * 1024 // 500MB
+grails.controllers.upload.maxFileSize = maxFileSize
+grails.controllers.upload.maxRequestSize = maxRequestSize
+
 grails.plugin.databasemigration.updateOnStart = true
 grails.plugin.databasemigration.updateOnStartFileNames = ['changelog.groovy']
 

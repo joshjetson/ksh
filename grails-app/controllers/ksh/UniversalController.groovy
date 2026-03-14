@@ -5,12 +5,14 @@ import grails.core.GrailsApplication
 import grails.plugin.springsecurity.SpringSecurityService
 import grails.plugin.springsecurity.annotation.Secured
 import org.springframework.http.MediaType
+import org.springframework.web.multipart.MultipartHttpServletRequest
 import java.text.SimpleDateFormat
 
 @Secured(['ROLE_USER', 'ROLE_ADMIN'])
 class UniversalController {
 
     UniversalDataService universalDataService
+    ScormService scormService
     GrailsApplication grailsApplication
     SpringSecurityService springSecurityService
 
@@ -80,7 +82,11 @@ class UniversalController {
      */
     def save() {
         executeCrud('create') { domainClass, id ->
-            universalDataService.save(domainClass, params)
+            def instance = universalDataService.save(domainClass, extractParams())
+            if (instance instanceof Course && instance.scorm) {
+                scormService.extractAndParseScorm(instance)
+            }
+            instance
         }
     }
 
@@ -90,7 +96,11 @@ class UniversalController {
      */
     def update() {
         executeCrud('update') { domainClass, id ->
-            universalDataService.update(domainClass, id, params)
+            def instance = universalDataService.update(domainClass, id, extractParams())
+            if (instance instanceof Course && instance.scorm) {
+                scormService.extractAndParseScorm(instance)
+            }
+            instance
         }
     }
 
@@ -278,6 +288,7 @@ class UniversalController {
     private Object getServiceByName(String serviceName) {
         switch (serviceName) {
             case 'universalDataService': return universalDataService
+            case 'scormService': return scormService
             default: return null
         }
     }
@@ -285,6 +296,29 @@ class UniversalController {
     // ==========================================================
     // DECLARATIVE HELPERS
     // ==========================================================
+
+    /**
+     * Extract params including multipart file data.
+     * For each uploaded file named "foo", injects:
+     *   foo       -> byte[] (file bytes)
+     *   fooContentType -> String (MIME type)
+     *   fooFileName    -> String (original filename)
+     * This lets the generic DataBinder map files to domain fields declaratively.
+     * When swapping to S3, change this method to upload and store a URL instead.
+     */
+    private Map extractParams() {
+        Map myParams = new LinkedHashMap(params)
+        if (request instanceof MultipartHttpServletRequest) {
+            request.fileMap.each { name, file ->
+                if (file && !file.empty) {
+                    myParams[name] = file.bytes
+                    myParams["${name}ContentType"] = file.contentType
+                    myParams["${name}FileName"] = file.originalFilename
+                }
+            }
+        }
+        return myParams
+    }
 
     private String extractModelKey(String rawKey) {
         rawKey.replace('data[', '').replace(']', '')

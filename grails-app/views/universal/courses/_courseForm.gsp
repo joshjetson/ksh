@@ -4,7 +4,7 @@
 
 <!-- Back button -->
 <button hx-get="/universal/showView"
-        hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser"}'
+        hx-vals='{"template": "lessons/manage", "data[user]": "currentUser"}'
         hx-target="#content"
         hx-swap="innerHTML"
         class="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 mb-4 min-h-[44px] py-2">
@@ -18,9 +18,10 @@
     <h2 class="text-xl font-bold text-stone-800 mb-6">${isEdit ? 'Edit Course' : 'Create Course'}</h2>
 
     <form hx-${isEdit ? 'put' : 'post'}="${isEdit ? '/api/universal/Course/' + course.id + '?domainName=Course&refreshId=' + course.id : '/api/universal/Course?domainName=Course'}"
-          hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser"}'
+          hx-vals='{"template": "lessons/manage", "data[user]": "currentUser"}'
           hx-target="#content"
           hx-swap="innerHTML"
+          hx-encoding="multipart/form-data"
           class="space-y-4">
 
         <g:if test="${isEdit}">
@@ -40,6 +41,24 @@
         </div>
 
         <g:render template="/universal/components/input" model="[name: 'badgeReward', label: 'Badge Reward (optional)', value: course?.badgeReward, placeholder: 'Badge name awarded on completion']"/>
+
+        <!-- SCORM Package -->
+        <div>
+            <label class="block text-sm font-medium text-stone-700 mb-1">SCORM Package (.zip)</label>
+            <g:if test="${course?.scormFileName}">
+                <div class="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200 mb-2">
+                    <svg class="w-5 h-5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-sm text-green-800 truncate flex-1">${course.scormFileName}</span>
+                </div>
+            </g:if>
+            <input type="file"
+                   name="scorm"
+                   accept=".zip"
+                   class="block w-full text-sm text-stone-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 file:min-h-[44px] file:cursor-pointer"/>
+            <p class="text-xs text-stone-400 mt-1">${course?.scormFileName ? 'Upload a new file to replace the current package' : 'Upload a SCORM .zip package for this course'}</p>
+        </div>
 
         <div class="pt-2">
             <g:render template="/universal/components/button" model="[text: isEdit ? 'Update Course' : 'Create Course', type: 'submit', full: true]"/>

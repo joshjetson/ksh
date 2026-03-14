@@ -31,11 +31,17 @@
                 <div class="flex-1 min-w-0">
                     <h3 class="font-semibold text-stone-800 text-base line-clamp-1">${course.shortTitle}</h3>
                     <p class="text-sm text-stone-500 line-clamp-1">${course.shortDescription ?: ''}</p>
-                    <div class="flex items-center gap-3 mt-1">
+                    <div class="flex items-center gap-3 mt-1 flex-wrap">
                         <span class="text-xs text-stone-400">${ksh.CourseEnrollment.countByCourse(course)} enrolled</span>
                         <span class="text-xs font-medium ${course.costKCredits > 0 ? 'text-rose-700' : 'text-green-600'}">
                             ${course.costKCredits > 0 ? course.costKCredits + ' K-Credits' : 'Free'}
                         </span>
+                        <g:if test="${course.scormFileName}">
+                            <span class="text-xs text-green-600 font-medium">SCORM</span>
+                        </g:if>
+                        <g:else>
+                            <span class="text-xs text-amber-600">No SCORM</span>
+                        </g:else>
                     </div>
                 </div>
 

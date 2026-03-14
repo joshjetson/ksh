@@ -86,6 +86,7 @@ node_modules/
 # App data
 ksh_storage/
 ksh_data/
+uploads/
 
 # Internal docs
 app.md

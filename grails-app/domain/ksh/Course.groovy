@@ -12,6 +12,10 @@ class Course {
     Integer costKCredits = 0
     String badgeReward
     Integer pointReward = 0
+    byte[] scorm
+    String scormContentType
+    String scormFileName
+    String scormLaunchUrl
 
     User creator
 
@@ -27,6 +31,10 @@ class Course {
         shortDescription nullable: true
         tags nullable: true
         badgeReward nullable: true
+        scorm nullable: true, maxSize: 524288000
+        scormContentType nullable: true
+        scormFileName nullable: true
+        scormLaunchUrl nullable: true
         creator nullable: false
     }
 
@@ -41,6 +49,10 @@ class Course {
         costKCredits column: 'cost_k_credits'
         badgeReward column: 'badge_reward'
         pointReward column: 'point_reward'
+        scorm column: 'scorm', sqlType: 'bytea'
+        scormContentType column: 'scorm_content_type'
+        scormFileName column: 'scorm_file_name'
+        scormLaunchUrl column: 'scorm_launch_url'
         creator column: 'creator_id'
         dateCreated column: 'date_created'
         lastUpdated column: 'last_updated'

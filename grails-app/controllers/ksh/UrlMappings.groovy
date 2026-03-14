@@ -10,6 +10,12 @@ class UrlMappings {
         "/api/universal/$domainName/$id"(controller: "universal", action: "update", method: "PUT")
         "/api/universal/$domainName/$id"(controller: "universal", action: "delete", method: "DELETE")
 
+        // SCORM player routes
+        "/scorm/player/$id"(controller: "scorm", action: "player")
+        "/scorm/content/$courseId/**"(controller: "scorm", action: "content")
+        "/api/scorm/$courseId/cmi"(controller: "scorm", action: "getCmiData", method: "GET")
+        "/api/scorm/$courseId/cmi"(controller: "scorm", action: "saveCmiData", method: "POST")
+
         // Login routes
         "/login"(controller: "login", action: "index")
         "/login/auth"(controller: "login", action: "auth")

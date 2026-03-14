@@ -35,6 +35,15 @@
                         </div>
                     </g:else>
                 </div>
+
+                <!-- Launch button -->
+                <g:if test="${enrollment.course.scormLaunchUrl}">
+                    <a href="/scorm/player/${enrollment.course.id}"
+                       onclick="event.stopPropagation()"
+                       class="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-sm font-medium min-h-[44px] flex items-center flex-shrink-0">
+                        Launch
+                    </a>
+                </g:if>
             </div>
         </g:each>
     </div>
