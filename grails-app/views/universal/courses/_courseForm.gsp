@@ -4,7 +4,7 @@
 
 <!-- Back button -->
 <button hx-get="/universal/showView"
-        hx-vals='{"template": "lessons/manage", "data[user]": "currentUser"}'
+        hx-vals='{"template": "lessons/manage", "data[user]": "currentUser", "data[myCourses]": "filter:Course:creator.id=currentUserId"}'
         hx-target="#content"
         hx-swap="innerHTML"
         class="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 mb-4 min-h-[44px] py-2">
@@ -18,7 +18,7 @@
     <h2 class="text-xl font-bold text-stone-800 mb-6">${isEdit ? 'Edit Course' : 'Create Course'}</h2>
 
     <form hx-post="${isEdit ? '/universal/update/' + course.id + '?domainName=Course&refreshId=' + course.id : '/universal/save?domainName=Course'}"
-          hx-vals='{"template": "lessons/manage", "data[user]": "currentUser"}'
+          hx-vals='{"template": "lessons/manage", "data[user]": "currentUser", "data[myCourses]": "filter:Course:creator.id=currentUserId"}'
           hx-target="#content"
           hx-swap="innerHTML"
           hx-encoding="multipart/form-data"

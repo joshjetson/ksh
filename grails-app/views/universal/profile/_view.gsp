@@ -1,9 +1,3 @@
-<%
-    def badges = user ? ksh.UserBadge.findAllByUser(user) : []
-    def enrollmentCount = user ? ksh.CourseEnrollment.countByUser(user) : 0
-    def completedCount = user ? ksh.CourseEnrollment.countByUserAndCompletedAtIsNotNull(user) : 0
-%>
-
 <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 mb-6">
     <!-- User Info -->
     <div class="flex items-center gap-4 mb-6">
@@ -28,7 +22,7 @@
             <div class="text-xs text-stone-500">K-Credits</div>
         </div>
         <div class="p-3 rounded-lg bg-stone-50">
-            <div class="text-xl font-bold text-stone-800">${enrollmentCount}</div>
+            <div class="text-xl font-bold text-stone-800">${enrollmentCount ?: 0}</div>
             <div class="text-xs text-stone-500">Courses</div>
         </div>
         <div class="p-3 rounded-lg bg-stone-50">
@@ -59,7 +53,7 @@
 
     <div id="wall-posts"
          hx-get="/universal/showView"
-         hx-vals='{"template": "profile/wall", "data[user]": "currentUser"}'
+         hx-vals='{"template": "profile/wall", "data[user]": "currentUser", "data[wallPosts]": "filter:WallPost:targetUser.id=currentUserId"}'
          hx-trigger="load"
          hx-swap="innerHTML">
     </div>

@@ -1,7 +1,3 @@
-<%
-    def enrollments = user ? ksh.CourseEnrollment.findAllByUser(user) : []
-%>
-
 <h2 class="text-xl font-bold text-stone-800 mb-4">My Courses</h2>
 
 <g:if test="${enrollments}">
@@ -9,7 +5,7 @@
         <g:each in="${enrollments}" var="enrollment">
             <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-4 flex gap-4 items-center cursor-pointer hover:shadow-md transition-shadow"
                  hx-get="/universal/showView"
-                 hx-vals='{"template": "courses/preview", "data[course]": "get:Course:courseId", "data[user]": "currentUser", "courseId": "${enrollment.course.id}"}'
+                 hx-vals='{"template": "courses/preview", "data[course]": "get:Course:courseId", "data[user]": "currentUser", "data[enrolled]": "exists:CourseEnrollment:user.id=currentUserId,course.id=courseId", "courseId": "${enrollment.course.id}"}'
                  hx-target="#content"
                  hx-swap="innerHTML">
 

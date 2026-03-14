@@ -1,7 +1,3 @@
-<%
-    def myCourses = user ? ksh.Course.findAllByCreator(user) : []
-%>
-
 <div class="flex items-center justify-between mb-6">
     <h2 class="text-xl font-bold text-stone-800">My Lessons</h2>
     <button hx-get="/universal/showView"
@@ -32,7 +28,6 @@
                     <h3 class="font-semibold text-stone-800 text-base line-clamp-1">${course.shortTitle}</h3>
                     <p class="text-sm text-stone-500 line-clamp-1">${course.shortDescription ?: ''}</p>
                     <div class="flex items-center gap-3 mt-1 flex-wrap">
-                        <span class="text-xs text-stone-400">${ksh.CourseEnrollment.countByCourse(course)} enrolled</span>
                         <span class="text-xs font-medium ${course.costKCredits > 0 ? 'text-rose-700' : 'text-green-600'}">
                             ${course.costKCredits > 0 ? course.costKCredits + ' K-Credits' : 'Free'}
                         </span>

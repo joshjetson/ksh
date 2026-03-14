@@ -19,6 +19,36 @@ class UniversalController {
     // Cached instruction handlers map (lazy initialized)
     private Map<String, Closure> _instructionHandlers
 
+    // Whitelists — only these domains and service methods can be resolved via data instructions
+    private static final Set<String> ALLOWED_DOMAINS = [
+        'Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review', 'WallPost'
+    ] as Set
+
+    private static final Set<String> ALLOWED_SERVICE_METHODS = [
+        'getCmiData'
+    ] as Set
+
+    // Role-aware CRUD whitelist — which domains can be created/updated/deleted and by whom
+    private static final Map<String, List<String>> ALLOWED_CRUD_DOMAINS = [
+        'Course'          : ['ROLE_TEACHER', 'ROLE_ADMIN'],
+        'CourseEnrollment': ['ROLE_USER', 'ROLE_ADMIN'],
+        'Review'          : ['ROLE_USER', 'ROLE_ADMIN'],
+        'WallPost'        : ['ROLE_USER', 'ROLE_ADMIN'],
+        'Badge'           : ['ROLE_ADMIN'],
+        'UserBadge'       : ['ROLE_ADMIN']
+    ]
+
+    // Row-level ownership — maps domain name to the field that references the owning user.
+    // On update/delete, the current user must match this field (unless ROLE_ADMIN).
+    // On create, this field is force-set to the current user to prevent spoofing.
+    private static final Map<String, String> OWNERSHIP_FIELDS = [
+        'Course'          : 'creator',
+        'CourseEnrollment': 'user',
+        'Review'          : 'user',
+        'WallPost'        : 'user'
+    ]
+
+
     // SSE Client Management
     private static final List<PrintWriter> sseClients = Collections.synchronizedList([])
 
@@ -185,12 +215,17 @@ class UniversalController {
     private Map<String, Closure> getInstructionHandlers() {
         if (_instructionHandlers == null) {
             _instructionHandlers = [
-                'list'       : { parts -> universalDataService.list(getDomainClass(parts[1])) },
-                'get'        : { parts -> universalDataService.getById(getDomainClass(parts[1]), params.long(parts[2] ?: 'id')) },
-                'count'      : { parts -> universalDataService.count(getDomainClass(parts[1])) },
+                'list'       : { parts -> def dc = getAllowedDomainClass(parts[1]); dc ? universalDataService.list(dc, paginationParams()) : null },
+                'get'        : { parts -> def dc = getAllowedDomainClass(parts[1]); dc ? universalDataService.getById(dc, params.long(parts[2] ?: 'id')) : null },
+                'count'      : { parts -> def dc = getAllowedDomainClass(parts[1]); dc ? universalDataService.count(dc) : null },
                 'currentUser': { parts ->
+                    // Returns the logged-in user. Password (bcrypt hash) stays on the
+                    // domain object but is never rendered by any template.
+                    // We intentionally do NOT call discard() here — evicting the user
+                    // from the Hibernate session causes conflicts when other instructions
+                    // in the same request (e.g. filter with currentUserId) re-load the user.
                     def u = springSecurityService.currentUser
-                    u ? User.get(u.id) : null
+                    return u ? User.get(u.id) : null
                 },
                 'service'    : { parts -> invokeServiceMethod(parts) },
                 'literal'    : { parts ->
@@ -200,31 +235,57 @@ class UniversalController {
                     return value
                 },
                 'search'     : { parts ->
-                    def domain = getDomainClass(parts[1])
+                    def domain = getAllowedDomainClass(parts[1])
+                    if (!domain) return null
                     def fields = parts[2] ?: 'name'
                     def searchParamName = parts[3] ?: 'searchTerm'
                     def searchTerm = params[searchParamName]
-                    universalDataService.search(domain, fields, searchTerm)
+                    universalDataService.search(domain, fields, searchTerm, paginationParams())
                 },
                 'param'      : { parts ->
                     params[parts[1]] ?: ''
                 },
                 'filter'     : { parts ->
-                    def domain = getDomainClass(parts[1])
-                    def criteria = parts[2] ?: ''
-                    universalDataService.filter(domain, criteria)
+                    def domain = getAllowedDomainClass(parts[1])
+                    if (!domain) return null
+                    def criteria = resolveCriteriaValues(parts[2] ?: '')
+                    universalDataService.filter(domain, criteria, paginationParams())
                 },
                 'filterCount': { parts ->
-                    def domain = getDomainClass(parts[1])
-                    def criteria = parts[2] ?: ''
+                    def domain = getAllowedDomainClass(parts[1])
+                    if (!domain) return null
+                    def criteria = resolveCriteriaValues(parts[2] ?: '')
                     universalDataService.filterCount(domain, criteria)
                 },
                 'findByOrGet': { parts ->
-                    def domain = getDomainClass(parts[1])
+                    def domain = getAllowedDomainClass(parts[1])
+                    if (!domain) return null
                     def field = parts[2] ?: 'id'
                     def paramName = parts[3] ?: field
                     def value = params[paramName]
                     universalDataService.findByOrGet(domain, field, value)
+                },
+                // exists — Generic boolean check: "does a record matching these criteria exist?"
+                // Eliminates the need for scriptlet queries in GSP templates.
+                //
+                // Format: exists:Domain:field1=value1,field2=value2
+                //
+                // Values are resolved in this order:
+                //   1. "currentUserId" -> logged-in user's ID
+                //   2. Request param name   -> params[value] (e.g. "courseId" -> params.courseId)
+                //   3. Literal              -> used as-is if no param matches
+                //
+                // Usage examples:
+                //   data[enrolled]=exists:CourseEnrollment:user.id=currentUserId,course.id=courseId
+                //   data[reviewed]=exists:Review:user.id=currentUserId,course.id=courseId
+                //   data[hasBadge]=exists:UserBadge:user.id=currentUserId,badge.id=badgeId
+                //   data[isCreator]=exists:Course:creator.id=currentUserId,id=courseId
+                'exists'     : { parts ->
+                    def domain = getAllowedDomainClass(parts[1])
+                    if (!domain) return false
+                    def rawCriteria = parts[2] ?: ''
+                    def resolvedCriteria = resolveCriteriaValues(rawCriteria)
+                    universalDataService.exists(domain, resolvedCriteria)
                 },
                 'date'       : { parts ->
                     if (parts[1] == 'today') {
@@ -267,6 +328,11 @@ class UniversalController {
             methodName = parts[1]
         }
 
+        if (!ALLOWED_SERVICE_METHODS.contains(methodName)) {
+            println "SECURITY: Blocked service method access attempt: ${methodName}"
+            return null
+        }
+
         def respondsWithMap = service.metaClass.respondsTo(service, methodName, Map)
         def respondsNoArgs = service.metaClass.respondsTo(service, methodName)
 
@@ -298,6 +364,42 @@ class UniversalController {
     // ==========================================================
 
     /**
+     * Resolve dynamic values in criteria strings before passing to the service layer.
+     * Criteria format: "field1=value1,field2=value2"
+     *
+     * Each value is resolved in order:
+     *   - "currentUserId" → the logged-in user's ID (most common for ownership/enrollment checks)
+     *   - A request param name → params[value] if that param exists in the request
+     *   - Otherwise kept as a literal
+     *
+     * Example: "user.id=currentUserId,course.id=courseId"
+     *   → with user #3 logged in and params.courseId=7
+     *   → resolves to "user.id=3,course.id=7"
+     */
+    private String resolveCriteriaValues(String criteria) {
+        if (!criteria?.trim()) return criteria
+
+        criteria.split(',').collect { criterion ->
+            def eqParts = criterion.trim().split('=', 2)
+            if (eqParts.length == 2) {
+                def field = eqParts[0].trim()
+                def value = eqParts[1].trim()
+
+                // Resolve special tokens and param references
+                if (value == 'currentUserId') {
+                    def user = springSecurityService.currentUser
+                    value = user?.id?.toString() ?: '0'
+                } else if (params[value] != null) {
+                    value = params[value].toString()
+                }
+
+                return "${field}=${value}"
+            }
+            return criterion
+        }.join(',')
+    }
+
+    /**
      * Extract params including multipart file data.
      * For each uploaded file named "foo", injects:
      *   foo       -> byte[] (file bytes)
@@ -317,6 +419,7 @@ class UniversalController {
                 }
             }
         }
+
         return myParams
     }
 
@@ -324,9 +427,28 @@ class UniversalController {
         rawKey.replace('data[', '').replace(']', '')
     }
 
+    /**
+     * Extract pagination params from request. Frontend can pass max/offset
+     * to control result size. Capped at service-level DEFAULT_MAX (100).
+     */
+    private Map paginationParams() {
+        Map p = [:]
+        if (params.max) p.max = params.int('max')
+        if (params.offset) p.offset = params.int('offset')
+        return p
+    }
+
     private Class getDomainClass(String domainName) {
         if (!domainName) return null
         grailsApplication.getDomainClass("ksh.${domainName}")?.clazz
+    }
+
+    private Class getAllowedDomainClass(String domainName) {
+        if (!domainName || !ALLOWED_DOMAINS.contains(domainName)) {
+            println "SECURITY: Blocked domain access attempt: ${domainName}"
+            return null
+        }
+        getDomainClass(domainName)
     }
 
     private boolean isHtmxRequest() {
@@ -345,6 +467,25 @@ class UniversalController {
     private void executeCrud(String operationType, Closure operation) {
         String domainName = params.domainName
         Long id = params.long('id')
+
+        // Check CRUD whitelist
+        def allowedRoles = ALLOWED_CRUD_DOMAINS[domainName]
+        if (!allowedRoles) {
+            println "SECURITY: Blocked CRUD ${operationType} attempt on domain: ${domainName}"
+            render status: 403, text: 'Not allowed'
+            return
+        }
+
+        def user = springSecurityService.currentUser as User
+        def userRoles = user?.authorities?.collect { it.authority } ?: []
+        boolean isAdmin = userRoles.contains('ROLE_ADMIN')
+
+        if (!allowedRoles.any { userRoles.contains(it) }) {
+            println "SECURITY: User ${user?.username} lacks role for CRUD ${operationType} on ${domainName}. Has: ${userRoles}, needs one of: ${allowedRoles}"
+            render status: 403, text: 'Not allowed'
+            return
+        }
+
         Class domainClass = getDomainClass(domainName)
 
         if (!domainClass) {
@@ -354,6 +495,22 @@ class UniversalController {
         if (operationType != 'create' && !id) {
             render status: 404, text: "Invalid ID for ${domainName}"
             return
+        }
+
+        // Row-level ownership check on update/delete (admins bypass)
+        String ownerField = OWNERSHIP_FIELDS[domainName]
+        if (ownerField && operationType != 'create' && !isAdmin) {
+            def instance = universalDataService.getById(domainClass, id)
+            if (!instance) {
+                render status: 404, text: "${domainName} not found"
+                return
+            }
+            def owner = instance."${ownerField}"
+            if (owner?.id != user.id) {
+                println "SECURITY: User ${user.username} attempted ${operationType} on ${domainName} #${id} owned by user #${owner?.id}"
+                render status: 403, text: 'Not allowed'
+                return
+            }
         }
 
         try {

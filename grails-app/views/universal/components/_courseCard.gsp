@@ -1,6 +1,6 @@
 <div class="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
      hx-get="/universal/showView"
-     hx-vals='{"template": "courses/preview", "data[course]": "get:Course:courseId", "data[user]": "currentUser", "courseId": "${course.id}"}'
+     hx-vals='{"template": "courses/preview", "data[course]": "get:Course:courseId", "data[user]": "currentUser", "data[enrolled]": "exists:CourseEnrollment:user.id=currentUserId,course.id=courseId", "courseId": "${course.id}"}'
      hx-target="#content"
      hx-swap="innerHTML">
     <div class="aspect-video bg-stone-100 flex items-center justify-center">

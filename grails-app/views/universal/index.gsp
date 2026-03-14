@@ -31,7 +31,7 @@
             </button>
             <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
                     hx-get="/universal/showView"
-                    hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser"}'
+                    hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser", "data[enrollments]": "filter:CourseEnrollment:user.id=currentUserId"}'
                     hx-target="#content"
                     hx-swap="innerHTML"
                     onclick="setActiveTab(this)">
@@ -40,7 +40,7 @@
             <sec:ifAnyGranted roles='ROLE_ADMIN,ROLE_TEACHER'>
                 <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
                         hx-get="/universal/showView"
-                        hx-vals='{"template": "lessons/manage", "data[user]": "currentUser"}'
+                        hx-vals='{"template": "lessons/manage", "data[user]": "currentUser", "data[myCourses]": "filter:Course:creator.id=currentUserId"}'
                         hx-target="#content"
                         hx-swap="innerHTML"
                         onclick="setActiveTab(this)">
@@ -49,7 +49,7 @@
             </sec:ifAnyGranted>
             <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
                     hx-get="/universal/showView"
-                    hx-vals='{"template": "profile/view", "data[user]": "currentUser"}'
+                    hx-vals='{"template": "profile/view", "data[user]": "currentUser", "data[badges]": "filter:UserBadge:user.id=currentUserId", "data[enrollmentCount]": "filterCount:CourseEnrollment:user.id=currentUserId"}'
                     hx-target="#content"
                     hx-swap="innerHTML"
                     onclick="setActiveTab(this)">

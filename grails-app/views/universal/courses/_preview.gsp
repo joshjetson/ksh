@@ -52,10 +52,7 @@
 
         <!-- Enroll button -->
         <g:if test="${user}">
-            <%
-                def alreadyEnrolled = ksh.CourseEnrollment.findByUserAndCourse(user, course) != null
-            %>
-            <g:if test="${alreadyEnrolled}">
+            <g:if test="${enrolled}">
                 <g:if test="${course.scormLaunchUrl}">
                     <a href="/scorm/player/${course.id}"
                        class="mb-6 w-full py-3 px-4 rounded-lg text-center text-white font-medium bg-rose-700 hover:bg-rose-800 block text-base min-h-[44px]">
@@ -70,7 +67,7 @@
             </g:if>
             <g:else>
                 <form hx-post="/universal/save?domainName=CourseEnrollment"
-                      hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser"}'
+                      hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser", "data[enrollments]": "filter:CourseEnrollment:user.id=currentUserId"}'
                       hx-target="#content"
                       hx-swap="innerHTML"
                       class="mb-6">

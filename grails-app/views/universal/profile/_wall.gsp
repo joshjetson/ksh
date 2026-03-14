@@ -1,7 +1,3 @@
-<%
-    def wallPosts = user ? ksh.WallPost.findAllByTargetUser(user, [sort: 'dateCreated', order: 'desc', max: 20]) : []
-%>
-
 <g:if test="${wallPosts}">
     <div class="space-y-3">
         <g:each in="${wallPosts}" var="post">

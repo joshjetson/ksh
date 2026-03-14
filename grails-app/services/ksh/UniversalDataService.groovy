@@ -95,12 +95,20 @@ class UniversalDataService {
         }
     }
 
+    // Default pagination cap — prevents unbounded queries from returning massive result sets.
+    // Override per-request by passing max/offset params from the frontend.
+    private static final int DEFAULT_MAX = 100
+
     /**
      * List all instances - works with any domain class
+     * @param domainClass - the domain to list
+     * @param queryParams - optional map with 'max' and 'offset' for pagination
      */
-    List list(Class domainClass) {
+    List list(Class domainClass, Map queryParams = [:]) {
         try {
-            return domainClass.list()
+            int max = Math.min((queryParams.max ?: DEFAULT_MAX) as int, DEFAULT_MAX)
+            int offset = (queryParams.offset ?: 0) as int
+            return domainClass.list(max: max, offset: offset)
         } catch (Exception e) {
             println "ERROR: " + ("Error listing ${domainClass.simpleName}: ${e.message}")
             return []
@@ -160,7 +168,7 @@ class UniversalDataService {
      *                   Special values: "today" for date fields means current date
      * @return List of matching domain instances
      */
-    List filter(Class domainClass, String criteria) {
+    List filter(Class domainClass, String criteria, Map queryParams = [:]) {
         try {
             if (!domainClass) {
                 println "ERROR: " + ("Filter called with null domainClass")
@@ -168,14 +176,16 @@ class UniversalDataService {
             }
 
             if (!criteria?.trim()) {
-                return list(domainClass)
+                return list(domainClass, queryParams)
             }
 
+            int max = Math.min((queryParams.max ?: DEFAULT_MAX) as int, DEFAULT_MAX)
+            int offset = (queryParams.offset ?: 0) as int
             def today = new Date().clearTime()
             def tomorrow = today + 1
             def weekAgo = today - 7
 
-            return domainClass.createCriteria().list {
+            return domainClass.createCriteria().list(max: max, offset: offset) {
                 criteria.split(',').each { criterion ->
                     def parts = criterion.trim().split('=')
                     if (parts.length == 2) {
@@ -269,7 +279,7 @@ class UniversalDataService {
      * @param searchTerm - the search term
      * @return List of matching domain instances, or all if no search term
      */
-    List search(Class domainClass, String fields, String searchTerm) {
+    List search(Class domainClass, String fields, String searchTerm, Map queryParams = [:]) {
         try {
             if (!domainClass) {
                 println "ERROR: " + ("Search called with null domainClass")
@@ -277,13 +287,14 @@ class UniversalDataService {
             }
 
             if (!searchTerm?.trim()) {
-                return list(domainClass)
+                return list(domainClass, queryParams)
             }
 
+            int max = Math.min((queryParams.max ?: DEFAULT_MAX) as int, DEFAULT_MAX)
+            int offset = (queryParams.offset ?: 0) as int
             def fieldList = fields.split(',')*.trim()
 
-            // Use GORM criteria builder instead of raw HQL for better compatibility
-            return domainClass.createCriteria().list {
+            return domainClass.createCriteria().list(max: max, offset: offset) {
                 or {
                     fieldList.each { field ->
                         ilike(field, "%${searchTerm}%")
@@ -293,6 +304,35 @@ class UniversalDataService {
         } catch (Exception e) {
             println "ERROR: " + ("Error searching ${domainClass?.simpleName}: ${e.message}")
             return []
+        }
+    }
+
+    /**
+     * Check if a record exists matching the given criteria - returns true/false.
+     * Reuses the same criteria format as filter (comma-separated field=value pairs).
+     *
+     * This is the generic "does this thing exist?" check. Use it anywhere you need
+     * a boolean answer about a record's existence instead of querying in the view layer.
+     *
+     * Examples from the frontend (via data instructions):
+     *   data[enrolled]=exists:CourseEnrollment:user.id=3,course.id=7     -> true/false
+     *   data[reviewed]=exists:Review:user.id=3,course.id=7              -> true/false
+     *   data[hasBadge]=exists:UserBadge:user.id=3,badge.id=1            -> true/false
+     *   data[hasPost]=exists:WallPost:author.id=3                       -> true/false
+     *
+     * @param domainClass - the domain to check
+     * @param criteria - comma-separated field=value pairs (e.g. "user.id=3,course.id=7")
+     * @return true if at least one matching record exists, false otherwise
+     */
+    boolean exists(Class domainClass, String criteria) {
+        try {
+            if (!domainClass || !criteria?.trim()) {
+                return false
+            }
+            return filterCount(domainClass, criteria) > 0
+        } catch (Exception e) {
+            println "ERROR: Error checking exists for ${domainClass?.simpleName}: ${e.message}"
+            return false
         }
     }
 

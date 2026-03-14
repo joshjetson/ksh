@@ -47,6 +47,7 @@ class ScormController {
     def player() {
         def course = Course.get(params.long('id'))
         if (!course?.scormLaunchUrl) {
+            println "SCORM: Player requested for invalid/missing course ID ${params.id}"
             render status: 404, text: 'Course not found or has no SCORM content'
             return
         }
@@ -54,6 +55,7 @@ class ScormController {
         def user = springSecurityService.currentUser as User
         def enrollment = CourseEnrollment.findByUserAndCourse(user, course)
         if (!enrollment) {
+            println "SECURITY: User ${user?.username} attempted SCORM access to course ${course.id} without enrollment"
             render status: 403, text: 'Not enrolled in this course'
             return
         }
@@ -85,6 +87,7 @@ class ScormController {
         String filePath = requestPath.substring(prefixIndex + prefix.length())
 
         if (!filePath || filePath.contains('..')) {
+            println "SECURITY: Path traversal attempt on SCORM content: ${filePath}"
             render status: 400, text: 'Invalid path'
             return
         }
@@ -99,8 +102,17 @@ class ScormController {
         String ext = filePath.contains('.') ? filePath.substring(filePath.lastIndexOf('.') + 1).toLowerCase() : ''
         String mimeType = MIME_TYPES[ext] ?: 'application/octet-stream'
 
+        // Cache SCORM assets aggressively — they never change once extracted.
+        // ETag based on file size + last modified so browsers skip re-downloading.
+        String etag = "\"${file.length()}-${file.lastModified()}\""
+        if (request.getHeader('If-None-Match') == etag) {
+            render status: 304
+            return
+        }
+
         response.contentType = mimeType
-        response.setHeader('Cache-Control', 'public, max-age=3600')
+        response.setHeader('Cache-Control', 'public, max-age=86400')
+        response.setHeader('ETag', etag)
         file.withInputStream { is ->
             response.outputStream << is
         }
