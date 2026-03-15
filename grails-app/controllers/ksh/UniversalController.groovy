@@ -6,6 +6,7 @@ import grails.plugin.springsecurity.SpringSecurityService
 import grails.plugin.springsecurity.annotation.Secured
 import org.springframework.http.MediaType
 import org.springframework.web.multipart.MultipartHttpServletRequest
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter
 import java.text.SimpleDateFormat
 
 @Secured(['ROLE_USER', 'ROLE_ADMIN'])
@@ -49,8 +50,8 @@ class UniversalController {
     ]
 
 
-    // SSE Client Management
-    private static final List<PrintWriter> sseClients = Collections.synchronizedList([])
+    // SSE Client Management — SseEmitter is async, does not block servlet threads
+    private static final List<SseEmitter> sseClients = Collections.synchronizedList([])
 
     /**
      * GET /
@@ -69,7 +70,7 @@ class UniversalController {
      * REST API endpoint - returns JSON list of all instances
      */
     def list() {
-        executeQuery { domainClass -> universalDataService.list(domainClass) }
+        executeQuery(true) { domainClass -> universalDataService.list(domainClass) }
     }
 
     /**
@@ -79,7 +80,7 @@ class UniversalController {
     def show() {
         String domainName = params.domainName
         Long id = params.long('id')
-        Class domainClass = getDomainClass(domainName)
+        Class domainClass = getAllowedDomainClass(domainName)
 
         if (!domainClass || !id) {
             render status: 404, text: "Domain class '${domainName}' not found or invalid ID"
@@ -112,7 +113,15 @@ class UniversalController {
      */
     def save() {
         executeCrud('create') { domainClass, id ->
-            def instance = universalDataService.save(domainClass, extractParams())
+            // Force ownership field to the current user to prevent spoofing via hidden form fields.
+            // The form may send creator.id or user.id — we overwrite it after binding.
+            Map ownerOverride = null
+            String ownerField = OWNERSHIP_FIELDS[params.domainName]
+            if (ownerField) {
+                def currentUser = springSecurityService.currentUser
+                ownerOverride = [(ownerField): currentUser.id]
+            }
+            def instance = universalDataService.save(domainClass, extractParams(), ownerOverride)
             if (instance instanceof Course && instance.scorm) {
                 scormService.extractAndParseScorm(instance)
             }
@@ -149,7 +158,7 @@ class UniversalController {
      * Get count of instances
      */
     def count() {
-        executeQuery { domainClass -> [count: universalDataService.count(domainClass)] }
+        executeQuery(true) { domainClass -> [count: universalDataService.count(domainClass)] }
     }
 
     // ==========================================================
@@ -178,6 +187,10 @@ class UniversalController {
         if (isHtmx || params.template) {
             if (!params.template) {
                 render status: 400, text: 'HTMX request requires template'
+                return
+            }
+            if (!isValidTemplatePath(params.template.toString())) {
+                render status: 400, text: 'Invalid template path'
                 return
             }
             render template: params.template, model: model
@@ -451,6 +464,12 @@ class UniversalController {
         getDomainClass(domainName)
     }
 
+    private boolean isValidTemplatePath(String path) {
+        if (!path) return false
+        if (path.contains('..')) return false
+        return path.matches(/^[a-zA-Z0-9\/_-]+$/)
+    }
+
     private boolean isHtmxRequest() {
         return request.getHeader('HX-Request') == 'true'
     }
@@ -568,15 +587,16 @@ class UniversalController {
 
         String templatePath = params.template instanceof String[] ?
             params.template[0] : params.template.toString()
+        if (!isValidTemplatePath(templatePath)) return false
         Map model = buildModelFromRequest()
         response.setHeader('HX-Trigger', 'showSuccessToast')
         render template: templatePath, model: model
         return true
     }
 
-    private void executeQuery(Closure operation) {
+    private void executeQuery(boolean enforceWhitelist = false, Closure operation) {
         String domainName = params.domainName
-        Class domainClass = getDomainClass(domainName)
+        Class domainClass = enforceWhitelist ? getAllowedDomainClass(domainName) : getDomainClass(domainName)
 
         if (!domainClass) {
             render status: 404, text: "Domain class '${domainName}' not found"
@@ -598,48 +618,28 @@ class UniversalController {
 
     /**
      * GET /universal/sse
-     * SSE endpoint for real-time updates
+     * SSE endpoint for real-time updates.
+     * Uses SseEmitter (async) — does not block a servlet thread per client.
+     * Timeout: 1 hour. Client auto-reconnects via EventSource spec.
      */
     def sse() {
-        response.contentType = MediaType.TEXT_EVENT_STREAM_VALUE
-        response.characterEncoding = "UTF-8"
-        response.setHeader("Cache-Control", "no-cache")
-        response.setHeader("Connection", "keep-alive")
-        response.setHeader("Access-Control-Allow-Origin", "*")
+        SseEmitter emitter = new SseEmitter(3600000L) // 1 hour timeout
+        sseClients.add(emitter)
 
-        PrintWriter writer = response.writer
-        sseClients.add(writer)
+        emitter.onCompletion { sseClients.remove(emitter) }
+        emitter.onTimeout { sseClients.remove(emitter) }
+        emitter.onError { sseClients.remove(emitter) }
 
         try {
             SimpleDateFormat timeFormat = new SimpleDateFormat('HH:mm:ss')
             String timestamp = timeFormat.format(new Date())
-            writer.write("event: heartbeat\ndata: Connected: ${timestamp}\n\n")
-            writer.flush()
-
-            int heartbeatCount = 0
-            while (!Thread.currentThread().isInterrupted() && heartbeatCount < 120) {
-                try {
-                    Thread.sleep(30000)
-                    heartbeatCount++
-                    timestamp = timeFormat.format(new Date())
-                    writer.write("event: heartbeat\ndata: Heartbeat: ${timestamp}\n\n")
-                    writer.flush()
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt()
-                    break
-                } catch (Exception e) {
-                    break
-                }
-            }
-
+            emitter.send(SseEmitter.event().name('heartbeat').data("Connected: ${timestamp}"))
         } catch (Exception e) {
-            println "DEBUG: SSE client disconnected: ${e.message}"
-        } finally {
-            sseClients.remove(writer)
-            try {
-                writer.close()
-            } catch (Exception ignored) {}
+            println "DEBUG: SSE initial send failed: ${e.message}"
+            sseClients.remove(emitter)
         }
+
+        return emitter
     }
 
     /**
@@ -649,13 +649,11 @@ class UniversalController {
      */
     static void broadcastEvent(String eventName, String data) {
         synchronized(sseClients) {
-            sseClients.removeAll { client ->
+            sseClients.removeAll { emitter ->
                 try {
-                    client.write("event: ${eventName}\ndata: ${data}\n\n")
-                    client.flush()
+                    emitter.send(SseEmitter.event().name(eventName).data(data))
                     return false
                 } catch (Exception e) {
-                    println "Removing dead SSE client: ${e.message}"
                     return true
                 }
             }

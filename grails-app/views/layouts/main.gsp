@@ -9,6 +9,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
     <meta name="theme-color" content="#ffe4c4"/>
 
+    <!-- CSRF token for HTMX POST requests -->
+    <meta name="_csrf" content="${request.getAttribute('_csrf')?.token}" />
+    <meta name="_csrf_header" content="${request.getAttribute('_csrf')?.headerName}" />
+
     <!-- PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">

@@ -179,6 +179,137 @@ class UniversalDataServiceIntegrationSpec extends Specification {
     }
 
     // ====================================================================
+    // CONCERN 1: OWNERSHIP OVERRIDE ON CREATE
+    // These test that save() with ownershipOverride forces the correct
+    // owner regardless of what the form params say.
+    // ====================================================================
+
+    void "ownership override forces creator on Course"() {
+        when: "params say creator is learner, but override says teacher"
+        def result = universalDataService.save(Course, [
+            shortTitle: 'Spoofed Course',
+            longTitle: 'Spoofed Course',
+            costKCredits: '0',
+            pointReward: '0',
+            creator: [id: learner.id]  // spoofed
+        ], [creator: teacher.id])      // override
+
+        then: "creator is forced to teacher"
+        result != null
+        result.creator.id == teacher.id
+        result.shortTitle == 'Spoofed Course'
+        result.costKCredits == 0
+    }
+
+    void "ownership override forces user on CourseEnrollment"() {
+        when: "params say user is teacher, but override says learner"
+        def result = universalDataService.save(CourseEnrollment, [
+            user: [id: teacher.id],    // spoofed
+            course: [id: course.id]
+        ], [user: learner.id])         // override
+
+        then:
+        result != null
+        result.user.id == learner.id
+        result.course.id == course.id
+    }
+
+    void "ownership override forces user on WallPost"() {
+        when:
+        def result = universalDataService.save(WallPost, [
+            user: [id: teacher.id],    // spoofed
+            targetUser: [id: teacher.id],
+            message: 'Spoofed post'
+        ], [user: learner.id])         // override
+
+        then:
+        result != null
+        result.user.id == learner.id
+        result.message == 'Spoofed post'
+    }
+
+    void "ownership override does not break other fields"() {
+        when:
+        def result = universalDataService.save(Course, [
+            shortTitle: 'Full Fields',
+            longTitle: 'Full Fields Course',
+            costKCredits: '25',
+            pointReward: '50',
+            tags: 'test, override',
+            badgeReward: 'Gold Star',
+            creator: [id: learner.id]  // spoofed
+        ], [creator: teacher.id])      // override
+
+        then: "all fields bind correctly, only creator is overridden"
+        result != null
+        result.creator.id == teacher.id
+        result.costKCredits == 25
+        result.pointReward == 50
+        result.tags == 'test, override'
+        result.badgeReward == 'Gold Star'
+    }
+
+    void "save without ownership override still works (backwards compatible)"() {
+        when:
+        def result = universalDataService.save(Course, [
+            shortTitle: 'No Override',
+            longTitle: 'No Override',
+            costKCredits: '0',
+            pointReward: '0',
+            creator: [id: teacher.id]
+        ])
+
+        then:
+        result != null
+        result.creator.id == teacher.id
+    }
+
+    // ====================================================================
+    // CONCERN 2: SEARCH WILDCARD ESCAPING — requires real DB
+    // GORM DataTest mock doesn't respect escape sequences in ilike.
+    // ====================================================================
+
+    void "search escapes percent wildcard"() {
+        when: "search term is just percent signs"
+        def results = universalDataService.search(Course, 'longTitle', '%%')
+
+        then: "treated as literal, no match"
+        results.size() == 0
+    }
+
+    void "search escapes underscore wildcard"() {
+        when: "search term is just underscores"
+        def results = universalDataService.search(Course, 'longTitle', '____')
+
+        then: "treated as literal, no match"
+        results.size() == 0
+    }
+
+    void "search still works after escaping"() {
+        given: "a course with a unique title"
+        new Course(shortTitle: 'Xylophone99', longTitle: 'Xylophone99 Unique', costKCredits: 0, pointReward: 0, creator: teacher).save(failOnError: true, flush: true)
+
+        when: "normal search term"
+        def results = universalDataService.search(Course, 'longTitle', 'Xylophone99')
+
+        then:
+        results.size() == 1
+        results[0].longTitle == 'Xylophone99 Unique'
+    }
+
+    void "search still case insensitive after escaping"() {
+        given:
+        new Course(shortTitle: 'Zephyr42', longTitle: 'Zephyr42 Unique', costKCredits: 0, pointReward: 0, creator: teacher).save(failOnError: true, flush: true)
+
+        when:
+        def results = universalDataService.search(Course, 'longTitle', 'zephyr42')
+
+        then:
+        results.size() == 1
+        results[0].longTitle == 'Zephyr42 Unique'
+    }
+
+    // ====================================================================
     // UPDATE preserves associations
     // ====================================================================
 

@@ -414,6 +414,45 @@ class UniversalDataServiceSpec extends Specification
     }
 
     // ====================================================================
+    // CONCERN 2: SEARCH WILDCARD ESCAPING
+    // GORM DataTest mock doesn't respect escape sequences in ilike,
+    // so full search tests are in the integration spec.
+    // Here we verify the escape method via reflection.
+    // ====================================================================
+
+    void "escapeLikeWildcards escapes percent"() {
+        when:
+        def result = service.invokeMethod('escapeLikeWildcards', '%%')
+
+        then:
+        result == '\\%\\%'
+    }
+
+    void "escapeLikeWildcards escapes underscore"() {
+        when:
+        def result = service.invokeMethod('escapeLikeWildcards', '___')
+
+        then:
+        result == '\\_\\_\\_'
+    }
+
+    void "escapeLikeWildcards leaves normal text alone"() {
+        when:
+        def result = service.invokeMethod('escapeLikeWildcards', 'Korean')
+
+        then:
+        result == 'Korean'
+    }
+
+    void "escapeLikeWildcards handles null"() {
+        when:
+        def result = service.invokeMethod('escapeLikeWildcards', [null] as Object[])
+
+        then:
+        result == null
+    }
+
+    // ====================================================================
     // FIND BY OR GET BASELINES
     // ====================================================================
 

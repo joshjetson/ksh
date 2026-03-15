@@ -8,6 +8,15 @@
 
 // HTMX Configuration
 document.addEventListener('DOMContentLoaded', function() {
+    // Inject CSRF token into every HTMX request
+    document.body.addEventListener('htmx:configRequest', function(evt) {
+        var csrfToken = document.querySelector('meta[name="_csrf"]');
+        var csrfHeader = document.querySelector('meta[name="_csrf_header"]');
+        if (csrfToken && csrfHeader && csrfToken.content && csrfHeader.content) {
+            evt.detail.headers[csrfHeader.content] = csrfToken.content;
+        }
+    });
+
     // Configure HTMX loading indicator
     document.body.addEventListener('htmx:beforeRequest', function() {
         const indicator = document.getElementById('htmx-indicator');

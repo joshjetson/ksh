@@ -39,6 +39,9 @@ class ScormController {
         'pdf' : 'application/pdf',
         'txt' : 'text/plain'
     ]
+    def index() {
+        redirect uri: '/'
+    }
 
     /**
      * GET /scorm/player/{id}
@@ -92,7 +95,13 @@ class ScormController {
             return
         }
 
+        def baseDir = new File("uploads/scorm/${courseId}").canonicalPath
         def file = new File("uploads/scorm/${courseId}", filePath)
+        if (!file.canonicalPath.startsWith(baseDir)) {
+            println "SECURITY: Path traversal via canonical path on SCORM content: ${filePath}"
+            render status: 400, text: 'Invalid path'
+            return
+        }
         if (!file.exists() || file.isDirectory()) {
             render status: 404, text: 'File not found'
             return

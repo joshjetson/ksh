@@ -11,10 +11,10 @@ class Badge {
     Date lastUpdated
 
     static constraints = {
-        name nullable: false, blank: false
-        description nullable: true
-        icon nullable: true
-        requirements nullable: true
+        name nullable: false, blank: false, maxSize: 255
+        description nullable: true, maxSize: 5000
+        icon nullable: true, maxSize: 500
+        requirements nullable: true, maxSize: 5000
     }
 
     static mapping = {

@@ -10,7 +10,7 @@ class WallPost {
     Date lastUpdated
 
     static constraints = {
-        message nullable: false, blank: false
+        message nullable: false, blank: false, maxSize: 5000
     }
 
     static mapping = {

@@ -23,18 +23,18 @@ class Course {
     Date lastUpdated
 
     static constraints = {
-        longTitle nullable: false, blank: false
-        shortTitle nullable: false, blank: false
-        thumbnailSmall nullable: true
-        thumbnailLarge nullable: true
-        longDescription nullable: true
-        shortDescription nullable: true
-        tags nullable: true
-        badgeReward nullable: true
+        longTitle nullable: false, blank: false, maxSize: 255
+        shortTitle nullable: false, blank: false, maxSize: 255
+        thumbnailSmall nullable: true, maxSize: 500
+        thumbnailLarge nullable: true, maxSize: 500
+        longDescription nullable: true, maxSize: 5000
+        shortDescription nullable: true, maxSize: 1000
+        tags nullable: true, maxSize: 500
+        badgeReward nullable: true, maxSize: 255
         scorm nullable: true, maxSize: 524288000
-        scormContentType nullable: true
-        scormFileName nullable: true
-        scormLaunchUrl nullable: true
+        scormContentType nullable: true, maxSize: 100
+        scormFileName nullable: true, maxSize: 255
+        scormLaunchUrl nullable: true, maxSize: 500
         creator nullable: false
     }
 

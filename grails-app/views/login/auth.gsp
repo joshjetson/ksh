@@ -170,6 +170,9 @@
             </g:if>
 
             <form action="/login/authenticate" method="post" class="space-y-5">
+                <g:if test="${request.getAttribute('_csrf')}">
+                    <input type="hidden" name="${request.getAttribute('_csrf').parameterName}" value="${request.getAttribute('_csrf').token}"/>
+                </g:if>
                 <div>
                     <label for="username" class="block text-sm font-medium text-stone-700 mb-1">Username</label>
                     <input type="text" id="username" name="username" required

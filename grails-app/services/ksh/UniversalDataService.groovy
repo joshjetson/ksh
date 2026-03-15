@@ -293,11 +293,12 @@ class UniversalDataService {
             int max = Math.min((queryParams.max ?: DEFAULT_MAX) as int, DEFAULT_MAX)
             int offset = (queryParams.offset ?: 0) as int
             def fieldList = fields.split(',')*.trim()
+            def escaped = escapeLikeWildcards(searchTerm)
 
             return domainClass.createCriteria().list(max: max, offset: offset) {
                 or {
                     fieldList.each { field ->
-                        ilike(field, "%${searchTerm}%")
+                        ilike(field, "%${escaped}%")
                     }
                 }
             }
@@ -338,12 +339,20 @@ class UniversalDataService {
 
     /**
      * Save new instance - completely agnostic
+     * @param ownershipOverride - optional map of field name -> user ID to force after binding.
+     *   Used to prevent ownership spoofing on create (e.g. forged creator.id in hidden fields).
+     *   Uses User.load() to get a Hibernate proxy — no DB hit, no session conflict.
      */
-    def save(Class domainClass, Map params) {
+    def save(Class domainClass, Map params, Map ownershipOverride = null) {
         try {
             def instance = domainClass.newInstance()
             if (instance) {
                 updateProperties(instance, params)
+                if (ownershipOverride) {
+                    ownershipOverride.each { field, userId ->
+                        instance."${field}" = User.load(userId)
+                    }
+                }
                 instance.save(failOnError: true)
                 return instance
             }
@@ -434,6 +443,15 @@ class UniversalDataService {
         }
 
         return processed
+    }
+
+    /**
+     * Escape SQL LIKE wildcards in user input so they are treated as literals.
+     * Prevents users from crafting expensive queries with % or _ patterns.
+     */
+    private String escapeLikeWildcards(String input) {
+        if (!input) return input
+        return input.replace('%', '\\%').replace('_', '\\_')
     }
 
     /**

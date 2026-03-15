@@ -13,8 +13,8 @@ class Review {
 
     static constraints = {
         starRating min: 1, max: 5
-        title nullable: false, blank: false
-        text nullable: true
+        title nullable: false, blank: false, maxSize: 255
+        text nullable: true, maxSize: 5000
         user unique: 'course'
     }
 

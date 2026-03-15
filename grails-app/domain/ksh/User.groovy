@@ -31,12 +31,12 @@ class User implements Serializable {
 	}
 
 	static constraints = {
-		password nullable: false, blank: false, password: true
-		username nullable: false, blank: false, unique: true
-		name nullable: true
-		email nullable: true
-		phoneNumber nullable: true
-		avatar nullable: true
+		password nullable: false, blank: false, password: true, maxSize: 255
+		username nullable: false, blank: false, unique: true, maxSize: 100
+		name nullable: true, maxSize: 255
+		email nullable: true, maxSize: 255
+		phoneNumber nullable: true, maxSize: 50
+		avatar nullable: true, maxSize: 500
 		roleType inList: ['admin', 'learner', 'teacher', 'native_korean', 'community_leader']
 	}
 
