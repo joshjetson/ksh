@@ -11,6 +11,9 @@
 </head>
 <body>
 
+<% def label = config?.coursesLabel ?: 'Courses' %>
+<% def defaultTab = config?.newsfeedEnabled ? 'newsfeed' : 'browse' %>
+
 <!-- Single nav bar -->
 <header class="bg-white shadow-sm sticky top-0 z-20">
     <div class="max-w-6xl mx-auto px-4">
@@ -21,9 +24,19 @@
         </div>
         <!-- Tab row -->
         <nav class="flex gap-1 overflow-x-auto -mb-px" id="main-nav">
-            <button class="tab-btn tab-active px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
+            <g:if test="${config?.newsfeedEnabled}">
+                <button class="tab-btn ${defaultTab == 'newsfeed' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "newsfeed/feed", "data[user]": "currentUser", "data[posts]": "list:WallPost"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Newsfeed
+                </button>
+            </g:if>
+            <button class="tab-btn ${defaultTab == 'browse' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
                     hx-get="/universal/showView"
-                    hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser"}'
+                    hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser", "data[config]": "get:AppConfig:configId", "configId": "${config?.id}"}'
                     hx-target="#content"
                     hx-swap="innerHTML"
                     onclick="setActiveTab(this)">
@@ -35,7 +48,7 @@
                     hx-target="#content"
                     hx-swap="innerHTML"
                     onclick="setActiveTab(this)">
-                My Courses
+                My ${label}
             </button>
             <sec:ifAnyGranted roles='ROLE_ADMIN,ROLE_TEACHER'>
                 <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
@@ -44,29 +57,49 @@
                         hx-target="#content"
                         hx-swap="innerHTML"
                         onclick="setActiveTab(this)">
-                    Lessons
+                    Create
                 </button>
             </sec:ifAnyGranted>
             <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
                     hx-get="/universal/showView"
-                    hx-vals='{"template": "profile/view", "data[user]": "currentUser", "data[badges]": "filter:UserBadge:user.id=currentUserId", "data[enrollmentCount]": "filterCount:CourseEnrollment:user.id=currentUserId"}'
+                    hx-vals='{"template": "profile/view", "data[user]": "currentUser", "data[badges]": "filter:UserBadge:user.id=currentUserId", "data[enrollmentCount]": "filterCount:CourseEnrollment:user.id=currentUserId", "data[config]": "get:AppConfig:configId", "configId": "${config?.id}"}'
                     hx-target="#content"
                     hx-swap="innerHTML"
                     onclick="setActiveTab(this)">
                 Profile
             </button>
+            <sec:ifAnyGranted roles='ROLE_ADMIN'>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "settings/index", "data[user]": "currentUser"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Settings
+                </button>
+            </sec:ifAnyGranted>
         </nav>
     </div>
 </header>
 
 <!-- Content area -->
 <div class="max-w-6xl mx-auto px-4">
-    <div id="content" class="py-4"
-         hx-get="/universal/showView"
-         hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser"}'
-         hx-trigger="load"
-         hx-swap="innerHTML">
-    </div>
+    <g:if test="${config?.newsfeedEnabled}">
+        <div id="content" class="py-4"
+             hx-get="/universal/showView"
+             hx-vals='{"template": "newsfeed/feed", "data[user]": "currentUser", "data[posts]": "list:WallPost"}'
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+    </g:if>
+    <g:else>
+        <div id="content" class="py-4"
+             hx-get="/universal/showView"
+             hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser", "data[config]": "get:AppConfig:configId", "configId": "${config?.id}"}'
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+    </g:else>
 </div>
 
 <script>

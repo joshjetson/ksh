@@ -10,6 +10,13 @@ class BootstrapService {
     @Autowired
     PasswordEncoder passwordEncoder
 
+    def createAppConfig() {
+        if (!AppConfig.count()) {
+            new AppConfig().save(failOnError: true)
+            log.info("Created default AppConfig")
+        }
+    }
+
     def createRoles() {
         if (!Role.count()) {
             Role.findOrSaveWhere(authority: 'ROLE_ADMIN')

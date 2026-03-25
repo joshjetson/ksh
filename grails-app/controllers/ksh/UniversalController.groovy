@@ -22,7 +22,7 @@ class UniversalController {
 
     // Whitelists — only these domains and service methods can be resolved via data instructions
     private static final Set<String> ALLOWED_DOMAINS = [
-        'Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review', 'WallPost'
+        'Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review', 'WallPost', 'User', 'AppConfig'
     ] as Set
 
     private static final Set<String> ALLOWED_SERVICE_METHODS = [
@@ -36,7 +36,8 @@ class UniversalController {
         'Review'          : ['ROLE_USER', 'ROLE_ADMIN'],
         'WallPost'        : ['ROLE_USER', 'ROLE_ADMIN'],
         'Badge'           : ['ROLE_ADMIN'],
-        'UserBadge'       : ['ROLE_ADMIN']
+        'UserBadge'       : ['ROLE_ADMIN'],
+        'AppConfig'       : ['ROLE_ADMIN']
     ]
 
     // Row-level ownership — maps domain name to the field that references the owning user.
@@ -58,7 +59,7 @@ class UniversalController {
      * Index page - Dashboard
      */
     def index() {
-        [:]
+        [config: AppConfig.first() ?: new AppConfig()]
     }
 
     // ==========================================================

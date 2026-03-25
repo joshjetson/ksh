@@ -9,10 +9,20 @@
                 <span class="text-2xl font-bold text-rose-700">${(user.name ?: user.username)?.charAt(0)?.toUpperCase()}</span>
             </g:else>
         </div>
-        <div>
+        <div class="flex-1">
             <h2 class="text-xl font-bold text-stone-800">${user.name ?: user.username}</h2>
-            <p class="text-sm text-stone-500 capitalize">${user.roleType?.replace('_', ' ')}</p>
+            <g:if test="${user.title}">
+                <p class="text-sm text-stone-600">${user.title}</p>
+            </g:if>
+            <p class="text-xs text-stone-400 capitalize">${user.roleType?.replace('_', ' ')}</p>
         </div>
+        <button hx-get="/universal/showView"
+                hx-vals='{"template": "profile/edit", "data[user]": "currentUser", "data[config]": "get:AppConfig:configId", "configId": "1"}'
+                hx-target="#content"
+                hx-swap="innerHTML"
+                class="px-3 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium transition-colors min-h-[44px] flex-shrink-0">
+            Edit
+        </button>
     </div>
 
     <!-- Stats -->
@@ -48,7 +58,7 @@
 </div>
 
 <!-- Wall Posts -->
-<div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
+<div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 mb-6">
     <h3 class="text-lg font-semibold text-stone-800 mb-4">Wall</h3>
 
     <div id="wall-posts"
@@ -58,3 +68,4 @@
          hx-swap="innerHTML">
     </div>
 </div>
+

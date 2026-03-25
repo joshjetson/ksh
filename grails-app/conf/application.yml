@@ -60,7 +60,8 @@ environments:
   development:
     dataSource:
       driverClassName: org.postgresql.Driver
-      dbCreate: create-drop
+      dbCreate: none
+
       url: jdbc:postgresql://localhost:5432/ksh_db
       username: ksh_user
       password: ksh_pass

@@ -1,6 +1,9 @@
 databaseChangeLog = {
 
     changeSet(author: "ksh", id: "add-scorm-columns-to-course") {
+        preConditions(onFail: "MARK_RAN") {
+            not { columnExists(tableName: "course", columnName: "scorm") }
+        }
         addColumn(tableName: "course") {
             column(name: "scorm", type: "BYTEA")
             column(name: "scorm_content_type", type: "VARCHAR(100)")
@@ -10,6 +13,9 @@ databaseChangeLog = {
     }
 
     changeSet(author: "ksh", id: "create-scorm-cmi-data-table") {
+        preConditions(onFail: "MARK_RAN") {
+            not { tableExists(tableName: "scorm_cmi_data") }
+        }
         createTable(tableName: "scorm_cmi_data") {
             column(name: "id", type: "BIGINT") {
                 constraints(nullable: false, primaryKey: true, primaryKeyName: "scormCmiDataPK")

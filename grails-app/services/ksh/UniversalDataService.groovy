@@ -21,41 +21,35 @@ class UniversalDataService {
     // ====================================================================
 
     /**
-     * Update user's role by removing all existing roles and assigning new role
+     * Create a new user and assign roles.
+     * ROLE_USER (learner) is always assigned. Additional roles from the list are added.
      */
-    def updateUserRole(User user, Role newRole) {
+    def createUserWithRoles(Map params, List<String> roleAuthorities) {
         try {
-            if (user && newRole) {
-                // Remove all existing user roles
-                UserRole.findAllByUser(user).each { userRole ->
-                    userRole.delete(failOnError: true)
-                }
-                // Assign new role
-                UserRole.create(user, newRole)
-                return true
-            }
+            def user = save(User, params)
+            if (!user) return null
+
+            assignRoles(user as User, roleAuthorities)
+            return user
         } catch (Exception e) {
-            println "ERROR: Error updating user role for user ${user?.username}: ${e.message}"
-            return false
+            println "ERROR: Error creating user with roles: ${e.message}"
+            return null
         }
-        return false
     }
 
     /**
-     * Create a new user with specified role
+     * Replace all roles on a user. ROLE_USER (learner) is always assigned.
      */
-    def createUserWithRole(Map params, Role role) {
+    def replaceUserRoles(User user, List<String> roleAuthorities) {
         try {
-            def user = save(User, params)
-            if (user && role) {
-                UserRole.create(user as User, role)
-                return user
-            }
+            if (!user) return false
+            UserRole.findAllByUser(user).each { it.delete(failOnError: true) }
+            assignRoles(user, roleAuthorities)
+            return true
         } catch (Exception e) {
-            println "ERROR: " + ("Error creating user with role: ${e.message}")
-            return null
+            println "ERROR: Error replacing roles for user ${user?.username}: ${e.message}"
+            return false
         }
-        return null
     }
 
     /**
@@ -64,19 +58,28 @@ class UniversalDataService {
     def deleteUser(User user) {
         try {
             if (user) {
-                // Remove all user roles first
-                UserRole.findAllByUser(user).each { userRole ->
-                    userRole.delete(failOnError: true)
-                }
-                // Delete the user
+                UserRole.findAllByUser(user).each { it.delete(failOnError: true) }
                 user.delete(failOnError: true)
                 return true
             }
         } catch (Exception e) {
-            println "ERROR: " + ("Error deleting user ${user?.username}: ${e.message}")
+            println "ERROR: Error deleting user ${user?.username}: ${e.message}"
             return false
         }
         return false
+    }
+
+    /**
+     * Assign roles to a user. ROLE_USER (learner) is always assigned.
+     */
+    private void assignRoles(User user, List<String> roleAuthorities) {
+        UserRole.create(user, Role.findByAuthority('ROLE_USER'))
+        if (roleAuthorities?.contains('ROLE_TEACHER')) {
+            UserRole.create(user, Role.findByAuthority('ROLE_TEACHER'))
+        }
+        if (roleAuthorities?.contains('ROLE_ADMIN')) {
+            UserRole.create(user, Role.findByAuthority('ROLE_ADMIN'))
+        }
     }
 
     // ====================================================================
