@@ -24,6 +24,27 @@
         </div>
         <!-- Tab row -->
         <nav class="flex gap-1 overflow-x-auto -mb-px" id="main-nav">
+            <%-- Dashboard: staff see metrics, students see their overview --%>
+            <sec:ifAnyGranted roles='ROLE_ADMIN,ROLE_TEACHER'>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "dashboard/admin"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Dashboard
+                </button>
+            </sec:ifAnyGranted>
+            <sec:ifNotGranted roles='ROLE_ADMIN,ROLE_TEACHER'>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "dashboard/overview", "data[stats]": "service:dashboardService:studentStats"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Dashboard
+                </button>
+            </sec:ifNotGranted>
             <g:if test="${config?.newsfeedEnabled}">
                 <button class="tab-btn ${defaultTab == 'newsfeed' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
                         hx-get="/universal/showView"
@@ -60,6 +81,33 @@
                     Create
                 </button>
             </sec:ifAnyGranted>
+            <%-- Messaging: staff land in the inbox, students open their own thread --%>
+            <sec:ifAnyGranted roles='ROLE_ADMIN,ROLE_TEACHER'>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/messages/inbox"
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Messages
+                </button>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "schedule/calendar", "data[cal]": "service:scheduleService:monthView"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Calendar
+                </button>
+            </sec:ifAnyGranted>
+            <sec:ifNotGranted roles='ROLE_ADMIN,ROLE_TEACHER'>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/messages/myThread"
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Messages
+                </button>
+            </sec:ifNotGranted>
             <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
                     hx-get="/universal/showView"
                     hx-vals='{"template": "profile/view", "data[user]": "currentUser", "data[badges]": "filter:UserBadge:user.id=currentUserId", "data[enrollmentCount]": "filterCount:CourseEnrollment:user.id=currentUserId", "data[config]": "get:AppConfig:configId", "configId": "${config?.id}"}'
@@ -69,6 +117,30 @@
                 Profile
             </button>
             <sec:ifAnyGranted roles='ROLE_ADMIN'>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "enrollments/manage", "data[enrollments]": "list:CourseEnrollment"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Enrollments
+                </button>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "requests/manage", "data[requests]": "filter:EnrollmentChangeRequest:status=PENDING"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Requests
+                </button>
+                <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+                        hx-get="/universal/showView"
+                        hx-vals='{"template": "discounts/list", "data[codes]": "list:DiscountCode"}'
+                        hx-target="#content"
+                        hx-swap="innerHTML"
+                        onclick="setActiveTab(this)">
+                    Discounts
+                </button>
                 <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
                         hx-get="/universal/showView"
                         hx-vals='{"template": "settings/index", "data[user]": "currentUser"}'

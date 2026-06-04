@@ -73,6 +73,13 @@
                       class="mb-6">
                     <input type="hidden" name="user.id" value="${user.id}"/>
                     <input type="hidden" name="course.id" value="${course.id}"/>
+                    <g:if test="${course.costKCredits > 0}">
+                        <div class="mb-3">
+                            <label for="codeEntered" class="block text-sm font-medium text-stone-700 mb-1">Discount code (optional)</label>
+                            <input type="text" id="codeEntered" name="codeEntered" placeholder="e.g. WELCOME10"
+                                   class="block w-full px-4 py-3 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-base uppercase"/>
+                        </div>
+                    </g:if>
                     <button type="submit"
                             class="w-full py-3 px-4 rounded-lg text-white font-medium bg-rose-700 hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 transition-colors text-base">
                         ${course.costKCredits > 0 ? 'Purchase for ' + course.costKCredits + ' K-Credits' : 'Enroll for Free'}

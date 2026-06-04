@@ -3,6 +3,7 @@ module.exports = {
   content: [
     './grails-app/views/**/*.gsp',
     './grails-app/views/**/*.html',
+    './grails-app/taglib/**/*.groovy',
     './src/**/*.{html,js}',
   ],
   theme: {

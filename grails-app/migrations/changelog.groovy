@@ -6,4 +6,7 @@ databaseChangeLog = {
     include file: 'add-app-config.groovy'
     include file: 'add-app-config-branding.groovy'
     include file: 'add-scorm-slide-count.groovy'
+    include file: 'add-messaging.groovy'
+    include file: 'add-enrollment-commerce.groovy'
+    include file: 'add-scheduling-and-requests.groovy'
 }

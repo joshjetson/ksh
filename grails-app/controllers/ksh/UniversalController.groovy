@@ -14,6 +14,8 @@ class UniversalController {
 
     UniversalDataService universalDataService
     ScormService scormService
+    DashboardService dashboardService
+    ScheduleService scheduleService
     GrailsApplication grailsApplication
     SpringSecurityService springSecurityService
 
@@ -22,21 +24,36 @@ class UniversalController {
 
     // Whitelists — only these domains and service methods can be resolved via data instructions
     private static final Set<String> ALLOWED_DOMAINS = [
-        'Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review', 'WallPost', 'User', 'AppConfig'
+        'Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review', 'WallPost', 'User', 'AppConfig',
+        'DiscountCode', 'BlackoutDate', 'EnrollmentChangeRequest'
     ] as Set
 
     private static final Set<String> ALLOWED_SERVICE_METHODS = [
-        'getCmiData'
+        'getCmiData', 'adminStats', 'studentStats', 'monthView'
     ] as Set
 
-    // Role-aware CRUD whitelist — which domains can be created/updated/deleted and by whom
-    private static final Map<String, List<String>> ALLOWED_CRUD_DOMAINS = [
+    // Role-aware CRUD whitelist — which domains can be created/updated/deleted and by whom.
+    // A value may be either a flat List<String> (same roles for create/update/delete) or a
+    // Map<operation, List<String>> for per-operation control (e.g. students may create an
+    // enrollment but only staff may update/delete it — so a student can't set paymentStatus).
+    private static final Map<String, Object> ALLOWED_CRUD_DOMAINS = [
         'Course'          : ['ROLE_TEACHER', 'ROLE_ADMIN'],
-        'CourseEnrollment': ['ROLE_USER', 'ROLE_ADMIN'],
+        'CourseEnrollment': [create: ['ROLE_USER', 'ROLE_TEACHER', 'ROLE_ADMIN'],
+                             // update/delete are admin-only: enrollment status/payment is
+                             // back-office, and admins bypass the row-ownership check so they
+                             // can manage any student's enrollment.
+                             update: ['ROLE_ADMIN'],
+                             delete: ['ROLE_ADMIN']],
         'Review'          : ['ROLE_USER', 'ROLE_ADMIN'],
         'WallPost'        : ['ROLE_USER', 'ROLE_ADMIN'],
         'Badge'           : ['ROLE_ADMIN'],
         'UserBadge'       : ['ROLE_ADMIN'],
+        'DiscountCode'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
+        'BlackoutDate'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
+        'EnrollmentChangeRequest': [create: ['ROLE_USER', 'ROLE_TEACHER', 'ROLE_ADMIN'],
+                                    // admin approves/denies (admins bypass row-ownership)
+                                    update: ['ROLE_ADMIN'],
+                                    delete: ['ROLE_ADMIN']],
         'AppConfig'       : ['ROLE_ADMIN']
     ]
 
@@ -47,7 +64,8 @@ class UniversalController {
         'Course'          : 'creator',
         'CourseEnrollment': 'user',
         'Review'          : 'user',
-        'WallPost'        : 'user'
+        'WallPost'        : 'user',
+        'EnrollmentChangeRequest': 'requestedBy'
     ]
 
 
@@ -369,6 +387,8 @@ class UniversalController {
         switch (serviceName) {
             case 'universalDataService': return universalDataService
             case 'scormService': return scormService
+            case 'dashboardService': return dashboardService
+            case 'scheduleService': return scheduleService
             default: return null
         }
     }
@@ -488,10 +508,17 @@ class UniversalController {
         String domainName = params.domainName
         Long id = params.long('id')
 
-        // Check CRUD whitelist
-        def allowedRoles = ALLOWED_CRUD_DOMAINS[domainName]
-        if (!allowedRoles) {
+        // Check CRUD whitelist. The config is either a flat List (same roles for all ops)
+        // or a Map keyed by operation (create/update/delete) for per-operation control.
+        def crudConfig = ALLOWED_CRUD_DOMAINS[domainName]
+        if (!crudConfig) {
             println "SECURITY: Blocked CRUD ${operationType} attempt on domain: ${domainName}"
+            render status: 403, text: 'Not allowed'
+            return
+        }
+        List<String> allowedRoles = (crudConfig instanceof Map) ? (crudConfig[operationType] as List) : (crudConfig as List)
+        if (!allowedRoles) {
+            println "SECURITY: Operation ${operationType} not permitted on domain: ${domainName}"
             render status: 403, text: 'Not allowed'
             return
         }

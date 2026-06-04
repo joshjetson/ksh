@@ -13,7 +13,7 @@ This codebase is the **canonical UDA implementation**. On every implementation o
 2. **Reads** come from data instructions in `hx-vals`: `data[key]=instruction`. **Writes** go through `POST /universal/save|update|delete?domainName=X`.
 3. **Booleans in a view** (enrolled? reviewed? owns?) use `exists:` — **never** a domain query in a `<% %>` scriptlet.
 4. **Forms return the next view**: every form includes `template` + `data[]` in `hx-vals`, targets `#content`, so the mutation response IS the next screen (no redirect, no second request).
-5. **Reuse components** from `views/universal/components/` (`_input`, `_button`, `_select`, `_textarea`, `_emptyState`, `_courseCard`, `_progressBar`, `_badge`, `_starRating`, `_avatarPicker`). If UI repeats, it's a component. Add only optional, backward-compatible params to shared ones.
+5. **Reuse components** from `views/universal/components/` (`_input`, `_button`, `_select`, `_textarea`, `_emptyState`, `_courseCard`, `_progressBar`, `_statCard`, `_badge`, `_starRating`, `_avatarPicker`) and tags from `KshTagLib` (`ksh:trendBars`, `ksh:statusBadge`, `ksh:roleBadge`, `ksh:credits`). If UI repeats, it's a component; if output is computed, it's a tag. Add only optional, backward-compatible params to shared ones. Tailwind scans `views/**` and `taglib/**` only.
 
 ## The four whitelists in `UniversalController` are the contract
 
@@ -23,11 +23,11 @@ Adding a domain to a feature means editing these — nowhere else:
 - `OWNERSHIP_FIELDS` — `domain → ownerField`; force-set on create, enforced on update/delete (admins bypass).
 - `ALLOWED_SERVICE_METHODS` — method names callable via `service:`.
 
-`User` is read-only here (in `ALLOWED_DOMAINS`, NOT in `ALLOWED_CRUD_DOMAINS`) — user writes go through `UserController`.
+A CRUD value is **either** a flat `List<role>` (all ops) **or** a `Map<op, List<role>>` for per-operation control — use the Map when students create but only admins update (e.g. `CourseEnrollment`, `EnrollmentChangeRequest`, so a student can't forge `paymentStatus` or self-approve). Only admins bypass ownership, so staff-managed domains restrict update/delete to `ROLE_ADMIN`. `User` is read-only here (in `ALLOWED_DOMAINS`, NOT in `ALLOWED_CRUD_DOMAINS`) — user writes go through `UserController`.
 
 ## Dedicated controllers that are NOT violations
 
-`LoginController` (auth), `UserController` (user CRUD + password + roles, field-allowlisted), `ScormController` (SCORM runtime/binary/CMI), `AvatarController` & `BrandingController` (binary serving). The test for a *new* one: *is it generic CRUD-render of a domain?* If yes → UDA. If it's auth, binary streaming, a third-party runtime, or external ingest → dedicated is fine; state why.
+`LoginController` (auth), `UserController` (user CRUD + password + roles, field-allowlisted), `ScormController` (SCORM runtime/binary/CMI), `MessagesController` (find-or-create threads + per-thread access, SSE), `PublicController` (anonymous landing + self-registration, `permitAll`), `AvatarController` & `BrandingController` (binary serving). The test for a *new* one: *is it generic CRUD-render of a domain?* If yes → UDA. If it's auth, binary streaming, a third-party runtime, or external ingest → dedicated is fine; state why.
 
 ## Non-negotiables (reject on sight)
 

@@ -120,29 +120,38 @@ data[isCreator]= exists:Course:creator.id=currentUserId,id=courseId
 Four declarations in `UniversalController` define the entire read/write surface area. Adding a domain or service method anywhere else is wrong. **These are the live values — keep this section in sync when you edit the controller.**
 
 ```groovy
-ALLOWED_DOMAINS        = ['Course', 'CourseEnrollment', 'Badge', 'UserBadge',
-                          'Review', 'WallPost', 'User', 'AppConfig']
+ALLOWED_DOMAINS        = ['Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review',
+                          'WallPost', 'User', 'AppConfig', 'DiscountCode', 'BlackoutDate',
+                          'EnrollmentChangeRequest']
 
-ALLOWED_SERVICE_METHODS = ['getCmiData']
+ALLOWED_SERVICE_METHODS = ['getCmiData', 'adminStats', 'studentStats', 'monthView']
 
+// A CRUD value is either a flat List (same roles for every op) or a Map keyed by
+// operation (create/update/delete) for per-operation control.
 ALLOWED_CRUD_DOMAINS    = ['Course'          : ['ROLE_TEACHER', 'ROLE_ADMIN'],
-                           'CourseEnrollment': ['ROLE_USER', 'ROLE_ADMIN'],
+                           'CourseEnrollment': [create: ['ROLE_USER', 'ROLE_TEACHER', 'ROLE_ADMIN'],
+                                                update: ['ROLE_ADMIN'], delete: ['ROLE_ADMIN']],
                            'Review'          : ['ROLE_USER', 'ROLE_ADMIN'],
                            'WallPost'        : ['ROLE_USER', 'ROLE_ADMIN'],
                            'Badge'           : ['ROLE_ADMIN'],
                            'UserBadge'       : ['ROLE_ADMIN'],
+                           'DiscountCode'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
+                           'BlackoutDate'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
+                           'EnrollmentChangeRequest': [create: ['ROLE_USER', 'ROLE_TEACHER', 'ROLE_ADMIN'],
+                                                update: ['ROLE_ADMIN'], delete: ['ROLE_ADMIN']],
                            'AppConfig'       : ['ROLE_ADMIN']]
 
 OWNERSHIP_FIELDS        = ['Course'          : 'creator',
                            'CourseEnrollment': 'user',
                            'Review'          : 'user',
-                           'WallPost'        : 'user']
+                           'WallPost'        : 'user',
+                           'EnrollmentChangeRequest': 'requestedBy']
 ```
 
 - `ALLOWED_DOMAINS` — domains readable via data instructions (`list`, `get`, `filter`, `exists`, etc.).
-- `ALLOWED_CRUD_DOMAINS` — `Map<domain, List<role>>`. Domains writable via `save`/`update`/`delete`, plus the roles allowed.
-- `OWNERSHIP_FIELDS` — `Map<domain, fieldName>`. The user-referencing field on a domain. Used to (a) **force-set the owner on create** to defeat spoofed hidden fields, (b) **enforce row-level ownership on update/delete** (admins bypass).
-- `ALLOWED_SERVICE_METHODS` — names of service methods callable via `service:` instructions. Tightly scoped (currently only `getCmiData`, used by the SCORM player to hydrate CMI state through the universal endpoint). Note this set is **global, not per-service** — fine while tiny; if it grows, refactor to `Map<serviceName, Set<methodName>>`.
+- `ALLOWED_CRUD_DOMAINS` — `Map<domain, config>` where config is **either** a flat `List<role>` (same roles for create/update/delete) **or** a `Map<operation, List<role>>` for per-operation control. Use the Map form when create and update need different roles — e.g. a student may *create* a `CourseEnrollment` but only an admin may *update* it (so a student can't flip their own `paymentStatus` to PAID), and a student may *create* an `EnrollmentChangeRequest` but only an admin may approve it.
+- `OWNERSHIP_FIELDS` — `Map<domain, fieldName>`. The user-referencing field on a domain. Used to (a) **force-set the owner on create** to defeat spoofed hidden fields, (b) **enforce row-level ownership on update/delete** (admins bypass). Because only admins bypass ownership, domains that staff manage on behalf of others (enrollments, change requests) restrict update/delete to `ROLE_ADMIN`.
+- `ALLOWED_SERVICE_METHODS` — names of service methods callable via `service:` instructions. Tightly scoped: `getCmiData` (SCORM player CMI hydration), `adminStats`/`studentStats` (`DashboardService`), `monthView` (`ScheduleService` calendar). Note this set is **global, not per-service** — fine while small; if it grows, refactor to `Map<serviceName, Set<methodName>>`.
 
 > **KSH read-vs-write split for `User`:** `User` **is** in `ALLOWED_DOMAINS` (it's read for profile and wall views), but it is deliberately **absent from `ALLOWED_CRUD_DOMAINS`** — all user writes (create, password, roles, profile fields) go through the dedicated `UserController` with field-level allowlists. Reading a user is fine; mutating one through the generic endpoint is not. Never add `User` to `ALLOWED_CRUD_DOMAINS` for a "quick fix."
 
@@ -158,7 +167,7 @@ POST /universal/delete/{id}?domainName=Review
 
 Every CRUD call passes through `executeCrud(operationType, closure)` which, in order:
 
-1. Looks up `ALLOWED_CRUD_DOMAINS[domainName]` → 403 if missing.
+1. Looks up `ALLOWED_CRUD_DOMAINS[domainName]` → 403 if missing. If the value is a Map, resolves the role list for *this* operation (`create`/`update`/`delete`) → 403 if the operation isn't permitted.
 2. Loads the current user's roles → 403 if none of the allowed roles match.
 3. Resolves the domain class.
 4. On non-create with a known `OWNERSHIP_FIELDS[domain]`, fetches the instance and verifies `instance.<field>.id == currentUser.id` (admins bypass).
@@ -202,7 +211,8 @@ After the save succeeds, `executeCrud` sees `params.template` and re-runs the mo
 | `_button.gsp` | `text, type, variant, full` | Styled button |
 | `_emptyState.gsp` | `message, icon, hint` | Centered empty-state placeholder |
 | `_courseCard.gsp` | `course, enrollment` | Course tile (thumbnail, title, price, click-to-preview wiring) |
-| `_progressBar.gsp` | `value`/`progress` (0–100), `label` | Percentage bar (color-on-100) |
+| `_progressBar.gsp` | `progress` (0–100), `label` | Percentage bar (color-on-100) |
+| `_statCard.gsp` | `value, label, hint` | Dashboard metric card |
 | `_badge.gsp` | `badge` | Badge icon + name |
 | `_starRating.gsp` | `rating` | 1–5 stars (display) |
 | `_avatarPicker.gsp` | `user` | Preset-avatar picker grid |
@@ -228,7 +238,7 @@ Inside a partial, `<% %>` blocks are for **default-resolution and slice-picking 
 | Coordinate math for an inline SVG | **no — TagLib** |
 | Anything you'd write a unit test for | **no — TagLib** |
 
-The litmus test: if removing the scriptlet would force copy-pasting the same computation into another view, it belongs in a tag. **KSH currently has no TagLib** — that's fine because no view yet needs computed output. The first time you reach for non-trivial formatting in a GSP, create `grails-app/taglib/ksh/KshTagLib.groovy` (namespace `ksh:`) rather than scriptlet-ing it, and add subsequent tags there.
+The litmus test: if removing the scriptlet would force copy-pasting the same computation into another view, it belongs in a tag. KSH's TagLib is `grails-app/taglib/ksh/KshTagLib.groovy` (namespace `ksh:`). Existing tags: `ksh:trendBars` (CSS bar chart for the dashboard), `ksh:statusBadge` (enrollment/payment status pill), `ksh:roleBadge`, `ksh:credits` (K-credit formatting). Add new tags there rather than scriptlet-ing computed output into a view. **Note for Tailwind:** the build only scans `grails-app/views/**` *and* `grails-app/taglib/**` (the taglib glob was added so tag-emitted classes aren't purged) — a class that lives only in a `.groovy` file outside those globs will be stripped from the built CSS.
 
 ## 7. The app shell
 
@@ -292,6 +302,8 @@ UDA eliminates **CRUD-shaped** controllers. It does **not** forbid controllers f
 | `LoginController` | Authentication flow (Spring Security). Not data CRUD. |
 | `UserController` | User create / update / **password change** / role assignment with **field-level allowlists**, plus avatar serving. User mutation is intentionally kept off the generic endpoint. Profile self-edits (`updateProfile`) allow only `firstName`/`lastName`/`title`/`avatar`. |
 | `ScormController` | SCORM runtime: serves extracted package files from disk, persists CMI tracking data, launches the player. A third-party JS runtime contract, not CRUD. |
+| `MessagesController` | 1:1 student↔staff messaging. Needs find-or-create of a student's thread and per-thread access checks the generic endpoint can't express. Persists via `UniversalDataService`; broadcasts `Message-create` over SSE. |
+| `PublicController` | Anonymous pre-auth surface — marketing landing, public course catalog, and student self-registration (`permitAll`). A different auth model; creates `ROLE_USER` accounts via `UniversalDataService.createUserWithRoles` + `reauthenticate`. |
 | `AvatarController` | Serves preset avatar SVGs (binary/static asset serving). |
 | `BrandingController` | Serves the configurable background image bytes (binary serving). |
 

@@ -22,6 +22,9 @@
                 <!-- Info -->
                 <div class="flex-1 min-w-0">
                     <h3 class="font-semibold text-stone-800 text-base line-clamp-1">${enrollment.course.shortTitle}</h3>
+                    <g:if test="${enrollment.totalAmount && enrollment.totalAmount > 0}">
+                        <span class="inline-block mb-1"><ksh:statusBadge status="${enrollment.paymentStatus}"/></span>
+                    </g:if>
                     <g:if test="${enrollment.completedAt}">
                         <span class="text-xs text-green-600 font-medium">Completed</span>
                     </g:if>
@@ -30,6 +33,11 @@
                             <g:render template="/universal/components/progressBar" model="[progress: enrollment.progress, label: '']"/>
                         </div>
                     </g:else>
+                    <button hx-get="/universal/showView"
+                            hx-vals='{"template": "courses/changeRequest", "data[enrollment]": "get:CourseEnrollment:enrollmentId", "enrollmentId": "${enrollment.id}"}'
+                            hx-target="#content" hx-swap="innerHTML"
+                            onclick="event.stopPropagation()"
+                            class="text-xs text-stone-400 hover:text-rose-600 mt-1">Request change</button>
                 </div>
 
                 <!-- Launch button -->

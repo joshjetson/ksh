@@ -4,6 +4,11 @@ info:
     version: '@info.app.version@'
     grailsVersion: '@info.app.grailsVersion@'
 grails:
+  databinding:
+    dateFormats:
+      - "yyyy-MM-dd'T'HH:mm:ss"
+      - "yyyy-MM-dd'T'HH:mm"
+      - "yyyy-MM-dd"
   mime:
     disable:
       accept:
