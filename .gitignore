@@ -92,3 +92,6 @@ uploads/
 app.md
 design.md
 deploy.sh
+
+# OpenProject local config (contains API token)
+.openproject.config

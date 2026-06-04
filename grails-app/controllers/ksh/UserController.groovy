@@ -2,12 +2,17 @@ package ksh
 
 import grails.plugin.springsecurity.SpringSecurityService
 import grails.plugin.springsecurity.annotation.Secured
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.context.SecurityContextHolder
 
 @Secured(['ROLE_ADMIN'])
 class UserController {
 
     SpringSecurityService springSecurityService
     UniversalDataService universalDataService
+    def passwordEncoder
+    def rememberMeServices
+    def userDetailsService
 
     def index() {
         redirect uri: '/'
@@ -165,6 +170,14 @@ class UserController {
                 safeParams.avatar = null
             }
 
+            // Handle preset avatar selection (when upload is disabled)
+            if (params.presetAvatar) {
+                String slug = params.presetAvatar.toString().trim()
+                if (slug && AvatarController.presetSlugs.contains(slug)) {
+                    safeParams.avatar = "/avatar/preset/${slug}"
+                }
+            }
+
             def updated = universalDataService.update(User, currentUser.id, safeParams)
             if (!updated) {
                 render status: 400, text: 'Failed to update profile'
@@ -210,6 +223,74 @@ class UserController {
         response.contentType = mimeTypes[ext] ?: 'application/octet-stream'
         response.setHeader('Cache-Control', 'public, max-age=3600')
         match.withInputStream { response.outputStream << it }
+    }
+
+    /**
+     * POST /user/changePassword
+     * A user changes their OWN password. Verifies the current password, enforces a
+     * minimum length, then re-issues the remember-me cookie so the user stays logged
+     * in — the hash-based remember-me token is derived from the password, so without
+     * this refresh the old cookie would silently stop working on the next browser
+     * restart. Renders an inline result message (targets #password-msg via HTMX).
+     */
+    @Secured(['ROLE_USER', 'ROLE_ADMIN'])
+    def changePassword() {
+        try {
+            def currentUser = springSecurityService.currentUser as User
+            if (!currentUser) {
+                render status: 401, text: 'Not authenticated'
+                return
+            }
+
+            String currentPassword = params.currentPassword
+            String newPassword = params.newPassword
+            String confirmPassword = params.confirmPassword
+
+            def fail = { String msg ->
+                render(template: '/universal/profile/passwordResult', model: [ok: false, message: msg])
+            }
+
+            if (!currentPassword?.trim() || !newPassword?.trim() || !confirmPassword?.trim()) {
+                fail('All fields are required.'); return
+            }
+            if (!passwordEncoder.matches(currentPassword, currentUser.password)) {
+                fail('Your current password is incorrect.'); return
+            }
+            if (newPassword.length() < 8) {
+                fail('New password must be at least 8 characters.'); return
+            }
+            if (newPassword != confirmPassword) {
+                fail('New password and confirmation do not match.'); return
+            }
+            if (passwordEncoder.matches(newPassword, currentUser.password)) {
+                fail('New password must be different from your current password.'); return
+            }
+
+            currentUser.password = springSecurityService.encodePassword(newPassword)
+            if (!currentUser.save(flush: true)) {
+                fail('Could not update password. Please try again.'); return
+            }
+
+            // Rebuild the authentication with the NEW password hash, then re-issue the
+            // remember-me cookie. The existing Authentication's principal still holds
+            // the old hash, so signing from it would produce a cookie that fails on the
+            // next auto-login. Reloading fresh UserDetails fixes the signature and also
+            // refreshes the live SecurityContext.
+            try {
+                def freshDetails = userDetailsService.loadUserByUsername(currentUser.username)
+                def newAuth = new UsernamePasswordAuthenticationToken(freshDetails, freshDetails.password, freshDetails.authorities)
+                SecurityContextHolder.context.authentication = newAuth
+                rememberMeServices.loginSuccess(request, response, newAuth)
+            } catch (Exception e) {
+                println "WARN: Could not refresh remember-me cookie after password change: ${e.message}"
+            }
+
+            response.setHeader('HX-Trigger', 'showSuccessToast')
+            render(template: '/universal/profile/passwordResult', model: [ok: true, message: 'Password updated successfully.'])
+        } catch (Exception e) {
+            println "ERROR: Error changing password: ${e.message}"
+            render status: 500, text: 'Error changing password'
+        }
     }
 
     // ==================== Private Helpers ====================

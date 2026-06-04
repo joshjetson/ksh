@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta name="layout" content="main"/>
-    <title>Korean School House - Login</title>
+    <title>${config?.siteTitle ?: 'Korean School House'} - Login</title>
     <style>
         .korean-bg {
             position: fixed;
@@ -19,7 +19,13 @@
 </head>
 <body>
 
-<div class="min-h-screen flex items-center justify-center p-4 relative" style="background-color: #ffe4c4;">
+<%
+    def hasCustomBg = config?.backgroundImage
+    def bgStyle = hasCustomBg
+        ? "background-image: url('/branding/background'); background-size: cover; background-position: center;"
+        : "background-color: #ffe4c4;"
+%>
+<div class="min-h-screen flex items-center justify-center p-4 relative" style="${bgStyle}">
 
     <!-- Scattered Korean cultural icons -->
     <div class="korean-bg">
@@ -155,10 +161,12 @@
 
         <div class="text-center mb-6">
             <div class="inline-block mb-4">
-                <span class="text-6xl font-bold text-rose-700 tracking-tight">한</span>
+                <span class="text-6xl font-bold text-rose-700 tracking-tight">${config?.logoText ?: '한'}</span>
             </div>
-            <h1 class="text-2xl font-bold text-stone-800">Korean School House</h1>
-            <p class="text-stone-500 text-sm mt-1">한국어 학교</p>
+            <h1 class="text-2xl font-bold text-stone-800">${config?.siteTitle ?: 'Korean School House'}</h1>
+            <g:if test="${config?.siteSubtitle}">
+                <p class="text-stone-500 text-sm mt-1">${config.siteSubtitle}</p>
+            </g:if>
         </div>
 
         <div class="bg-white rounded-xl shadow-lg border border-stone-200 p-8">
@@ -195,7 +203,7 @@
         </div>
 
         <div class="mt-6 text-center">
-            <p class="text-xs text-stone-400">&copy; ${new Date().year + 1900} Korean School House</p>
+            <p class="text-xs text-stone-400">&copy; ${new Date().year + 1900} ${config?.siteTitle ?: 'Korean School House'}</p>
         </div>
 
     </div>

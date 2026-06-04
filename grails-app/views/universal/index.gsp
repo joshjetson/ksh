@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta name="layout" content="main"/>
-    <title>Korean School House</title>
+    <title>${config?.siteTitle ?: 'Korean School House'}</title>
     <style>
         .tab-active { color: #be123c; border-bottom-color: #be123c; }
         .tab-btn { border-bottom: 2px solid transparent; }
@@ -19,7 +19,7 @@
     <div class="max-w-6xl mx-auto px-4">
         <!-- Top row: title + logout -->
         <div class="flex justify-between items-center h-12">
-            <span class="text-base font-bold text-stone-800">&#54620; Korean School House</span>
+            <span class="text-base font-bold text-stone-800">${config?.logoText ?: '한'} ${config?.siteTitle ?: 'Korean School House'}</span>
             <a href="/logout" class="text-sm text-stone-500 hover:text-stone-700 py-2 px-3">Logout</a>
         </div>
         <!-- Tab row -->

@@ -1,5 +1,5 @@
 <div>
-    <label for="${name}" class="block text-sm font-medium text-stone-700 mb-1">${label}</label>
+    <label for="${name}" class="block text-sm font-medium text-stone-700 mb-1">${label}${required ? ' *' : ''}</label>
     <textarea id="${name}"
               name="${name}"
               rows="${rows ?: 4}"

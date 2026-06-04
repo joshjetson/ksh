@@ -3,7 +3,7 @@
 <html>
 <head>
     <meta name="layout" content="main"/>
-    <title>${course.shortTitle} - Korean School House</title>
+    <title>${course.shortTitle} - ${config?.siteTitle ?: 'Korean School House'}</title>
     <style>
         body { overflow: hidden; }
         #scorm-player { display: flex; flex-direction: column; height: 100vh; }
@@ -40,59 +40,88 @@
         var finished = false;
         var statusEl = document.getElementById('scorm-status');
 
+        var saveTimer = null;
+        var saving = false;          // a POST is currently in flight
+        var pendingAfterSave = false; // state changed while in flight -> save once more
         function persist() {
+            if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+            // Never overlap saves. Two concurrent POSTs load the same rows at the
+            // same version; the second UPDATE matches 0 rows and Hibernate throws
+            // a StaleStateException. Serialize to exactly one in-flight request and
+            // coalesce anything that arrives while it's running.
+            if (saving) { pendingAfterSave = true; return; }
+            saving = true;
+            var snapshot = JSON.stringify(cmi);
             var xhr = new XMLHttpRequest();
             xhr.open('POST', '/api/scorm/${course.id}/cmi', true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send(JSON.stringify(cmi));
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4) {
+                    saving = false;
+                    if (pendingAfterSave) { pendingAfterSave = false; persist(); }
+                }
+            };
+            xhr.send(snapshot);
+        }
+        // Coalesce SetValue bursts into a single save 10s after the last set.
+        // The SCO normally calls Commit at meaningful checkpoints — this is a
+        // safety net for SCOs that only commit on exit. Long debounce keeps
+        // server load close to old behavior (~few saves per session, not per second).
+        function scheduleSave() {
+            if (saveTimer) return;
+            saveTimer = setTimeout(function() { saveTimer = null; persist(); }, 10000);
         }
 
         function updateStatus() {
-            var status = cmi['cmi.core.lesson_status'] || 'not attempted';
+            // SCORM 1.2 uses cmi.core.lesson_status; SCORM 2004 splits into completion_status + success_status.
+            var status = cmi['cmi.completion_status'] || cmi['cmi.core.lesson_status'] || 'not attempted';
             if (statusEl) statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
         }
 
+        // Shared core. Used by both SCORM 1.2 (window.API) and SCORM 2004 (window.API_1484_11).
+        // The SCO walks up parent windows looking for whichever name matches its version.
+        function coreInit()        { if (initialized) return 'true'; initialized = true; finished = false; updateStatus(); if (statusEl) statusEl.textContent = 'In progress'; return 'true'; }
+        function coreFinish()      { if (!initialized || finished) return 'true'; finished = true; initialized = false; persist(); updateStatus(); return 'true'; }
+        function coreGetValue(k)   { var v = cmi[k]; return (v !== undefined && v !== null) ? String(v) : ''; }
+        function coreSetValue(k,v) { cmi[k] = v; if (k === 'cmi.core.lesson_status' || k === 'cmi.completion_status') updateStatus(); scheduleSave(); return 'true'; }
+        function coreCommit()      { persist(); return 'true'; }
+
+        // SCORM 1.2 — methods prefixed with LMS
         window.API = {
-            LMSInitialize: function(param) {
-                if (initialized) return 'true';
-                initialized = true;
-                finished = false;
-                updateStatus();
-                if (statusEl) statusEl.textContent = 'In progress';
-                return 'true';
-            },
-            LMSFinish: function(param) {
-                if (!initialized || finished) return 'true';
-                finished = true;
-                initialized = false;
-                persist();
-                updateStatus();
-                return 'true';
-            },
-            LMSGetValue: function(key) {
-                var val = cmi[key];
-                return (val !== undefined && val !== null) ? String(val) : '';
-            },
-            LMSSetValue: function(key, value) {
-                cmi[key] = value;
-                if (key === 'cmi.core.lesson_status') {
-                    updateStatus();
-                }
-                return 'true';
-            },
-            LMSCommit: function(param) {
-                persist();
-                return 'true';
-            },
-            LMSGetLastError: function() { return '0'; },
-            LMSGetErrorString: function(code) { return 'No error'; },
-            LMSGetDiagnostic: function(code) { return ''; }
+            LMSInitialize:      coreInit,
+            LMSFinish:          coreFinish,
+            LMSGetValue:        coreGetValue,
+            LMSSetValue:        coreSetValue,
+            LMSCommit:          coreCommit,
+            LMSGetLastError:    function()  { return '0'; },
+            LMSGetErrorString:  function(c) { return 'No error'; },
+            LMSGetDiagnostic:   function(c) { return ''; }
         };
 
-        // Persist on page unload in case SCO doesn't call LMSFinish
+        // SCORM 2004 — same operations, no LMS prefix, distinct window key.
+        window.API_1484_11 = {
+            Initialize:      coreInit,
+            Terminate:       coreFinish,
+            GetValue:        coreGetValue,
+            SetValue:        coreSetValue,
+            Commit:          coreCommit,
+            GetLastError:    function()  { return '0'; },
+            GetErrorString:  function(c) { return 'No error'; },
+            GetDiagnostic:   function(c) { return ''; }
+        };
+
+        // Persist on page unload in case SCO doesn't call LMSFinish.
+        // Use sendBeacon: it's guaranteed to deliver during unload (a normal async
+        // XHR is often killed mid-flight) and it sidesteps the in-flight guard,
+        // which can't complete once the page is tearing down.
         window.addEventListener('beforeunload', function() {
             if (initialized && !finished) {
-                persist();
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/scorm/${course.id}/cmi',
+                        new Blob([JSON.stringify(cmi)], { type: 'application/json' }));
+                } else {
+                    persist();
+                }
             }
         });
     })();

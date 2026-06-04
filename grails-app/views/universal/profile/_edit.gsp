@@ -40,11 +40,12 @@
                         </label>
                     </g:if>
                 </g:if>
-                <g:else>
-                    <p class="text-xs text-stone-400">Profile picture uploads are currently disabled</p>
-                </g:else>
             </div>
         </div>
+
+        <g:if test="${!config?.profileUploadEnabled}">
+            <g:render template="/universal/components/avatarPicker" model="[user: user]"/>
+        </g:if>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <g:render template="/universal/components/input" model="[name: 'firstName', label: 'First Name', value: user.firstName, required: true]"/>
@@ -55,6 +56,30 @@
 
         <div class="pt-2">
             <g:render template="/universal/components/button" model="[text: 'Save Profile', type: 'submit']"/>
+        </div>
+    </form>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 mt-6">
+    <h2 class="text-xl font-bold text-stone-800 mb-1">Change Password</h2>
+    <p class="text-sm text-stone-500 mb-4">You'll stay logged in after changing your password.</p>
+
+    <form hx-post="/user/changePassword"
+          hx-target="#password-msg"
+          hx-swap="innerHTML"
+          class="space-y-4">
+
+        <g:render template="/universal/components/input" model="[name: 'currentPassword', label: 'Current Password', type: 'password', required: true, autocomplete: 'current-password']"/>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <g:render template="/universal/components/input" model="[name: 'newPassword', label: 'New Password', type: 'password', required: true, autocomplete: 'new-password']"/>
+            <g:render template="/universal/components/input" model="[name: 'confirmPassword', label: 'Confirm New Password', type: 'password', required: true, autocomplete: 'new-password']"/>
+        </div>
+
+        <div id="password-msg"></div>
+
+        <div class="pt-2">
+            <g:render template="/universal/components/button" model="[text: 'Update Password', type: 'submit']"/>
         </div>
     </form>
 </div>

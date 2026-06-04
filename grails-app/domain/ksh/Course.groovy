@@ -16,6 +16,7 @@ class Course {
     String scormContentType
     String scormFileName
     String scormLaunchUrl
+    Integer scormSlideCount
 
     User creator
 
@@ -35,6 +36,7 @@ class Course {
         scormContentType nullable: true, maxSize: 100
         scormFileName nullable: true, maxSize: 255
         scormLaunchUrl nullable: true, maxSize: 500
+        scormSlideCount nullable: true
         creator nullable: false
     }
 
@@ -49,10 +51,11 @@ class Course {
         costKCredits column: 'cost_k_credits'
         badgeReward column: 'badge_reward'
         pointReward column: 'point_reward'
-        scorm column: 'scorm', sqlType: 'bytea'
+        scorm column: 'scorm', sqlType: 'bytea', lazy: true
         scormContentType column: 'scorm_content_type'
         scormFileName column: 'scorm_file_name'
         scormLaunchUrl column: 'scorm_launch_url'
+        scormSlideCount column: 'scorm_slide_count'
         creator column: 'creator_id'
         dateCreated column: 'date_created'
         lastUpdated column: 'last_updated'

@@ -4,4 +4,6 @@ databaseChangeLog = {
     include file: 'add-scorm-support.groovy'
     include file: 'add-user-profile-extended.groovy'
     include file: 'add-app-config.groovy'
+    include file: 'add-app-config-branding.groovy'
+    include file: 'add-scorm-slide-count.groovy'
 }

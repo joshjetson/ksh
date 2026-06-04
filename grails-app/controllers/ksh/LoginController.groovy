@@ -10,7 +10,7 @@ class LoginController {
         if (springSecurityService.isLoggedIn()) {
             redirect uri: "/"
         } else {
-            render view: "auth"
+            render view: "auth", model: brandingModel()
         }
     }
 
@@ -18,7 +18,11 @@ class LoginController {
         if (springSecurityService.isLoggedIn()) {
             redirect uri: "/"
         } else {
-            render view: "auth"
+            render view: "auth", model: brandingModel()
         }
+    }
+
+    private Map brandingModel() {
+        [config: AppConfig.first() ?: new AppConfig()]
     }
 }

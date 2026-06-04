@@ -65,7 +65,7 @@ class ScormController {
 
         def cmiData = scormService.getCmiData(user, course)
 
-        [course: course, user: user, enrollment: enrollment, cmiData: cmiData]
+        [course: course, user: user, enrollment: enrollment, cmiData: cmiData, config: AppConfig.first()]
     }
 
     /**
@@ -95,7 +95,20 @@ class ScormController {
             return
         }
 
-        def baseDir = new File("uploads/scorm/${courseId}").canonicalPath
+        // Lazy-extract: only touch the DB if the package isn't on disk yet.
+        // Critically, do NOT call Course.get() unconditionally here — content()
+        // runs for every JS/CSS/image/font in the package (often 100+ per session)
+        // and the Course row carries a multi-megabyte byte[]. Hammering it on the
+        // hot path will overwhelm Postgres and crash Docker Desktop's networking.
+        def courseDir = new File("uploads/scorm/${courseId}")
+        if (!courseDir.exists() || courseDir.list()?.length == 0) {
+            def course = Course.get(courseId)
+            if (course?.scorm) {
+                scormService.ensureExtracted(course)
+            }
+        }
+
+        def baseDir = courseDir.canonicalPath
         def file = new File("uploads/scorm/${courseId}", filePath)
         if (!file.canonicalPath.startsWith(baseDir)) {
             println "SECURITY: Path traversal via canonical path on SCORM content: ${filePath}"
@@ -106,6 +119,11 @@ class ScormController {
             render status: 404, text: 'File not found'
             return
         }
+
+        // (No slide-sniffing here — Storyline's slide<N>.js numbers are unique
+        // timeline IDs, not ordinal positions. Trying to derive progress from them
+        // pushed enrollments to 100% spuriously. The SCORM 2004 API path
+        // (cmi.progress_measure) is the accurate signal; we rely on it.)
 
         // Determine MIME type
         String ext = filePath.contains('.') ? filePath.substring(filePath.lastIndexOf('.') + 1).toLowerCase() : ''
@@ -148,14 +166,15 @@ class ScormController {
      * Save CMI data from the player
      */
     def saveCmiData() {
-        def course = Course.get(params.long('courseId'))
+        Long courseId = params.long('courseId')
+        def course = Course.get(courseId)
         def user = springSecurityService.currentUser as User
         if (!course || !user) {
             render status: 404, text: 'Not found'
             return
         }
 
-        Map cmiData = request.JSON as Map
+        Map cmiData = (request.JSON as Map) ?: [:]
         scormService.saveCmiData(user, course, cmiData)
         render status: 200, text: 'OK'
     }

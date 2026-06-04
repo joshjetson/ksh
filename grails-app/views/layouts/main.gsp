@@ -3,6 +3,8 @@
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <%-- Default falls back to a static string only if a view didn't set its own title.
+         Authenticated views render through universal/index.gsp which uses AppConfig.siteTitle. --%>
     <title>
         <g:layoutTitle default="Korean School House"/>
     </title>
