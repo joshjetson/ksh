@@ -32,7 +32,8 @@
 </form>
 
 <!-- Month grid -->
-<div class="bg-white rounded-xl shadow-sm border border-stone-200 p-3">
+<div class="bg-white rounded-xl shadow-sm border border-stone-200 p-3 overflow-x-auto">
+    <div class="min-w-[42rem]">
     <div class="grid grid-cols-7 gap-1 mb-1">
         <g:each in="${['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']}" var="dn">
             <div class="text-center text-xs text-stone-400 py-1">${dn}</div>
@@ -62,4 +63,5 @@
             </g:each>
         </div>
     </g:each>
+    </div>
 </div>
