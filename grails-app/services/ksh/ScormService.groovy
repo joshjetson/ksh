@@ -6,6 +6,8 @@ import java.util.zip.ZipInputStream
 @Transactional
 class ScormService {
 
+    RewardService rewardService
+
     private static final String UPLOAD_DIR = 'uploads/scorm'
 
     // Matches Articulate Storyline's per-slide JS files (res/data/slide<N>.js).
@@ -237,6 +239,8 @@ class ScormService {
                 enrollment.progress = 100
                 enrollment.completedAt = new Date()
                 enrollment.save(failOnError: true)
+                // First-time completion → award points, course badges, milestones.
+                rewardService.grantForCompletion(user, course)
             } else if (newProgress > currentProgress) {
                 enrollment.progress = newProgress
                 enrollment.save(failOnError: true)

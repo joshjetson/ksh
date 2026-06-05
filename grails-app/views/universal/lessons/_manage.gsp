@@ -1,3 +1,12 @@
+<!-- Create-tab sub-nav -->
+<div class="flex gap-2 mb-6">
+    <button class="px-4 py-2 rounded-lg text-sm font-medium bg-rose-700 text-white min-h-[44px]">Lessons</button>
+    <button hx-get="/universal/showView"
+            hx-vals='{"template": "rewards/manage", "data[badges]": "list:Badge"}'
+            hx-target="#content" hx-swap="innerHTML"
+            class="px-4 py-2 rounded-lg text-sm font-medium bg-stone-100 text-stone-600 hover:bg-stone-200 min-h-[44px]">Rewards</button>
+</div>
+
 <div class="flex items-center justify-between mb-6">
     <h2 class="text-xl font-bold text-stone-800">My Lessons</h2>
     <button hx-get="/universal/showView"

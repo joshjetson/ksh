@@ -16,6 +16,7 @@ class UniversalController {
     ScormService scormService
     DashboardService dashboardService
     ScheduleService scheduleService
+    RewardService rewardService
     GrailsApplication grailsApplication
     SpringSecurityService springSecurityService
 
@@ -25,7 +26,7 @@ class UniversalController {
     // Whitelists — only these domains and service methods can be resolved via data instructions
     private static final Set<String> ALLOWED_DOMAINS = [
         'Course', 'CourseEnrollment', 'Badge', 'UserBadge', 'Review', 'WallPost', 'User', 'AppConfig',
-        'DiscountCode', 'BlackoutDate', 'EnrollmentChangeRequest'
+        'DiscountCode', 'BlackoutDate', 'EnrollmentChangeRequest', 'CourseReward'
     ] as Set
 
     private static final Set<String> ALLOWED_SERVICE_METHODS = [
@@ -46,10 +47,11 @@ class UniversalController {
                              delete: ['ROLE_ADMIN']],
         'Review'          : ['ROLE_USER', 'ROLE_ADMIN'],
         'WallPost'        : ['ROLE_USER', 'ROLE_ADMIN'],
-        'Badge'           : ['ROLE_ADMIN'],
+        'Badge'           : ['ROLE_TEACHER', 'ROLE_ADMIN'],
         'UserBadge'       : ['ROLE_ADMIN'],
         'DiscountCode'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
         'BlackoutDate'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
+        'CourseReward'    : ['ROLE_TEACHER', 'ROLE_ADMIN'],
         'EnrollmentChangeRequest': [create: ['ROLE_USER', 'ROLE_TEACHER', 'ROLE_ADMIN'],
                                     // admin approves/denies (admins bypass row-ownership)
                                     update: ['ROLE_ADMIN'],
@@ -77,6 +79,8 @@ class UniversalController {
      * Index page - Dashboard
      */
     def index() {
+        // Catch up time-based / threshold milestones (e.g. anniversaries) on portal load.
+        rewardService.checkMilestones(springSecurityService.currentUser as User)
         [config: AppConfig.first() ?: new AppConfig()]
     }
 

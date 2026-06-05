@@ -9,4 +9,6 @@ databaseChangeLog = {
     include file: 'add-messaging.groovy'
     include file: 'add-enrollment-commerce.groovy'
     include file: 'add-scheduling-and-requests.groovy'
+    include file: 'add-badge-kind-image.groovy'
+    include file: 'add-rewards-engine.groovy'
 }

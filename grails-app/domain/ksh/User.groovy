@@ -31,6 +31,8 @@ class User implements Serializable {
 	Integer kCredits = 0
 	Integer points = 0
 
+	Date dateCreated   // when the account joined — drives anniversary milestones
+
 	Set<Role> getAuthorities() {
 		(UserRole.findAllByUser(this) as List<UserRole>)*.role as Set<Role>
 	}
