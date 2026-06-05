@@ -4,12 +4,7 @@
      hx-target="#content"
      hx-swap="innerHTML">
     <div class="aspect-video bg-stone-100 flex items-center justify-center">
-        <g:if test="${course.thumbnailLarge}">
-            <img src="${course.thumbnailLarge}" alt="${course.shortTitle}" class="w-full h-full object-cover"/>
-        </g:if>
-        <g:else>
-            <span class="text-4xl">&#128218;</span>
-        </g:else>
+        <ksh:courseImage course="${course}" imgClass="w-full h-full object-cover" emojiClass="text-4xl"/>
     </div>
     <div class="p-4">
         <h3 class="font-semibold text-stone-800 text-base mb-1 line-clamp-1">${course.shortTitle}</h3>

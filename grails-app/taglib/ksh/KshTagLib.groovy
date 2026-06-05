@@ -32,6 +32,23 @@ class KshTagLib {
     }
 
     /**
+     * A lesson photo, or the book emoji fallback. Centralizes the image source
+     * resolution (uploaded photo → thumbnail URL → emoji) so every course view
+     * renders it the same way.
+     *   <ksh:courseImage course="${course}" imgClass="w-full h-full object-cover" emojiClass="text-4xl"/>
+     */
+    def courseImage = { attrs ->
+        def course = attrs.course
+        String src = course?.imageSrc()
+        if (src) {
+            String alt = (course?.shortTitle ?: '').replaceAll('"', '&quot;')
+            out << "<img src=\"${src}\" alt=\"${alt}\" class=\"${attrs.imgClass ?: 'w-full h-full object-cover'}\"/>"
+        } else {
+            out << "<span class=\"${attrs.emojiClass ?: 'text-4xl'}\">&#128218;</span>"
+        }
+    }
+
+    /**
      * A colored pill for an enrollment / payment status.
      *   <ksh:statusBadge status="${e.status}"/>
      */

@@ -18,6 +18,13 @@ class Course {
     String scormLaunchUrl
     Integer scormSlideCount
 
+    // Uploaded lesson photo. Bound declaratively from a multipart `image` field via
+    // UniversalController.extractParams(); served by CourseController. Lazy so listing
+    // courses never drags the blob (docs/uda.md pillar 10).
+    byte[] image
+    String imageContentType
+    String imageFileName
+
     User creator
 
     Date dateCreated
@@ -37,6 +44,9 @@ class Course {
         scormFileName nullable: true, maxSize: 255
         scormLaunchUrl nullable: true, maxSize: 500
         scormSlideCount nullable: true
+        image nullable: true, maxSize: 10485760  // 10 MB
+        imageContentType nullable: true, maxSize: 100
+        imageFileName nullable: true, maxSize: 255
         creator nullable: false
     }
 
@@ -56,8 +66,17 @@ class Course {
         scormFileName column: 'scorm_file_name'
         scormLaunchUrl column: 'scorm_launch_url'
         scormSlideCount column: 'scorm_slide_count'
+        image column: 'image', sqlType: 'bytea', lazy: true
+        imageContentType column: 'image_content_type'
+        imageFileName column: 'image_file_name'
         creator column: 'creator_id'
         dateCreated column: 'date_created'
         lastUpdated column: 'last_updated'
+    }
+
+    /** Best available image src for any view: uploaded photo, else a thumbnail URL, else null. */
+    String imageSrc() {
+        if (imageFileName) return "/course/image/${id}"
+        return thumbnailLarge ?: thumbnailSmall ?: null
     }
 }

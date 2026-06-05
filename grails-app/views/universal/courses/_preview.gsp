@@ -13,12 +13,7 @@
 <div class="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
     <!-- Hero image -->
     <div class="aspect-video bg-stone-100 flex items-center justify-center">
-        <g:if test="${course.thumbnailLarge}">
-            <img src="${course.thumbnailLarge}" alt="${course.shortTitle}" class="w-full h-full object-cover"/>
-        </g:if>
-        <g:else>
-            <span class="text-6xl">&#128218;</span>
-        </g:else>
+        <ksh:courseImage course="${course}" imgClass="w-full h-full object-cover" emojiClass="text-6xl"/>
     </div>
 
     <div class="p-6">

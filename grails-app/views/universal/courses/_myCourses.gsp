@@ -11,12 +11,7 @@
 
                 <!-- Thumbnail -->
                 <div class="w-20 h-20 bg-stone-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
-                    <g:if test="${enrollment.course.thumbnailSmall}">
-                        <img src="${enrollment.course.thumbnailSmall}" alt="${enrollment.course.shortTitle}" class="w-full h-full object-cover"/>
-                    </g:if>
-                    <g:else>
-                        <span class="text-2xl">&#128218;</span>
-                    </g:else>
+                    <ksh:courseImage course="${enrollment.course}" imgClass="w-full h-full object-cover" emojiClass="text-2xl"/>
                 </div>
 
                 <!-- Info -->

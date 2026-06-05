@@ -24,12 +24,7 @@
             <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-4 flex gap-4 items-center">
                 <!-- Thumbnail -->
                 <div class="w-20 h-20 bg-stone-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden">
-                    <g:if test="${course.thumbnailSmall}">
-                        <img src="${course.thumbnailSmall}" alt="${course.shortTitle}" class="w-full h-full object-cover"/>
-                    </g:if>
-                    <g:else>
-                        <span class="text-2xl">&#128218;</span>
-                    </g:else>
+                    <ksh:courseImage course="${course}" imgClass="w-full h-full object-cover" emojiClass="text-2xl"/>
                 </div>
 
                 <!-- Info -->

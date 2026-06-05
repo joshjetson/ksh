@@ -40,7 +40,8 @@ grails.plugin.springsecurity.controllerAnnotations.staticRules = [
         [pattern: '/login/**',       access: ['permitAll']],
         [pattern: '/logout/**',      access: ['permitAll']],
         [pattern: '/branding/**',    access: ['permitAll']],
-        [pattern: '/public/**',      access: ['permitAll']]
+        [pattern: '/public/**',      access: ['permitAll']],
+        [pattern: '/course/image/**', access: ['permitAll']]
 ]
 
 grails.plugin.springsecurity.filterChain.chainMap = [
@@ -63,5 +64,6 @@ grails.plugin.springsecurity.interceptUrlMap = [
         [pattern: '/**/favicon.ico', access: ['permitAll']],
         [pattern: '/branding/**',    access: ['permitAll']],
         [pattern: '/public/**',      access: ['permitAll']],
+        [pattern: '/course/image/**', access: ['permitAll']],
         [pattern: '/**',             access: ['ROLE_USER', 'ROLE_ADMIN']]
 ]

@@ -11,4 +11,5 @@ databaseChangeLog = {
     include file: 'add-scheduling-and-requests.groovy'
     include file: 'add-badge-kind-image.groovy'
     include file: 'add-rewards-engine.groovy'
+    include file: 'add-course-image.groovy'
 }

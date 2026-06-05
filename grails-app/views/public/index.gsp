@@ -28,10 +28,7 @@
             <g:each in="${courses}" var="c">
                 <div class="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden">
                     <div class="aspect-video bg-stone-100 flex items-center justify-center">
-                        <g:if test="${c.thumbnailLarge}">
-                            <img src="${c.thumbnailLarge}" alt="${c.shortTitle}" class="w-full h-full object-cover"/>
-                        </g:if>
-                        <g:else><span class="text-4xl">&#128218;</span></g:else>
+                        <ksh:courseImage course="${c}" imgClass="w-full h-full object-cover" emojiClass="text-4xl"/>
                     </div>
                     <div class="p-4">
                         <h3 class="font-semibold text-stone-800">${c.shortTitle}</h3>

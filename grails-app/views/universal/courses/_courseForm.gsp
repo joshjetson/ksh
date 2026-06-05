@@ -40,6 +40,17 @@
             <g:render template="/universal/components/input" model="[name: 'pointReward', label: 'Point Reward', type: 'number', value: course?.pointReward ?: 0]"/>
         </div>
 
+        <!-- Lesson Photo -->
+        <div>
+            <label class="block text-sm font-medium text-stone-700 mb-1">Lesson Photo</label>
+            <g:if test="${course?.imageSrc()}">
+                <img src="${course.imageSrc()}" alt="" class="w-40 h-24 rounded-lg object-cover border border-stone-200 mb-2"/>
+            </g:if>
+            <input type="file" name="image" accept="image/*"
+                   class="block w-full text-sm text-stone-500 file:mr-4 file:py-3 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 file:min-h-[44px] file:cursor-pointer"/>
+            <p class="text-xs text-stone-400 mt-1">${course?.imageFileName ? 'Upload a new photo to replace the current one' : 'Shown on course cards and the course page'}</p>
+        </div>
+
         <!-- SCORM Package -->
         <div>
             <label class="block text-sm font-medium text-stone-700 mb-1">SCORM Package (.zip)</label>
