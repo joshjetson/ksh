@@ -51,7 +51,7 @@
 
                 <!-- Edit button -->
                 <button hx-get="/universal/showView"
-                        hx-vals='{"template": "courses/courseForm", "data[course]": "get:Course:courseId", "data[user]": "currentUser", "courseId": "${course.id}"}'
+                        hx-vals='{"template": "courses/courseForm", "data[course]": "get:Course:courseId", "data[user]": "currentUser", "data[courseRewards]": "filter:CourseReward:course.id=courseId", "data[allBadges]": "list:Badge", "courseId": "${course.id}"}'
                         hx-target="#content"
                         hx-swap="innerHTML"
                         class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-colors min-h-[44px]">

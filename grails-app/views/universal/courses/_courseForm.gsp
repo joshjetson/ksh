@@ -40,8 +40,6 @@
             <g:render template="/universal/components/input" model="[name: 'pointReward', label: 'Point Reward', type: 'number', value: course?.pointReward ?: 0]"/>
         </div>
 
-        <g:render template="/universal/components/input" model="[name: 'badgeReward', label: 'Badge Reward (optional)', value: course?.badgeReward, placeholder: 'Badge name awarded on completion']"/>
-
         <!-- SCORM Package -->
         <div>
             <label class="block text-sm font-medium text-stone-700 mb-1">SCORM Package (.zip)</label>
@@ -65,3 +63,11 @@
         </div>
     </form>
 </div>
+
+<%-- Completion rewards are managed independently of the form (save the course first).
+     Kept outside the <form> above so attach/detach re-renders don't disturb edits. --%>
+<g:if test="${isEdit}">
+    <div id="course-rewards" class="bg-white rounded-xl shadow-sm border border-stone-200 p-6 mt-4">
+        <g:render template="/universal/courses/courseRewards" model="[course: course, courseRewards: courseRewards, allBadges: allBadges]"/>
+    </div>
+</g:if>

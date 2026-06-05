@@ -178,6 +178,16 @@ class UserController {
                 }
             }
 
+            // Equip an unlocked avatar collectible: only an AVATAR-kind badge the
+            // user has actually earned can be set as their profile picture.
+            if (params.earnedAvatar) {
+                Long badgeId = params.long('earnedAvatar')
+                Badge b = badgeId ? Badge.get(badgeId) : null
+                if (b && b.kind == BadgeKind.AVATAR && UserBadge.findByUserAndBadge(currentUser, b)) {
+                    safeParams.avatar = "/badge/image/${b.id}"
+                }
+            }
+
             def updated = universalDataService.update(User, currentUser.id, safeParams)
             if (!updated) {
                 render status: 400, text: 'Failed to update profile'
