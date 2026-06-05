@@ -15,7 +15,7 @@
 <div id="scorm-player">
     <!-- Player header -->
     <div class="bg-white shadow-sm px-4 py-2 flex items-center gap-3 flex-shrink-0">
-        <a href="/"
+        <a href="/?view=mycourses"
            class="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 min-h-[44px] py-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>

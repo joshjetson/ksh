@@ -13,6 +13,9 @@
 
 <% def label = config?.coursesLabel ?: 'Courses' %>
 <% def defaultTab = config?.newsfeedEnabled ? 'newsfeed' : 'browse' %>
+<%-- Landing tab: arriving from a lesson (?view=mycourses, e.g. the player's Exit)
+     opens My Courses; otherwise the configured default. --%>
+<% def landing = (params.view == 'mycourses') ? 'mycourses' : defaultTab %>
 
 <!-- Single nav bar -->
 <header class="bg-white shadow-sm sticky top-0 z-20">
@@ -46,7 +49,7 @@
                 </button>
             </sec:ifNotGranted>
             <g:if test="${config?.newsfeedEnabled}">
-                <button class="tab-btn ${defaultTab == 'newsfeed' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
+                <button class="tab-btn ${landing == 'newsfeed' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
                         hx-get="/universal/showView"
                         hx-vals='{"template": "newsfeed/feed", "data[user]": "currentUser", "data[posts]": "list:WallPost"}'
                         hx-target="#content"
@@ -55,7 +58,7 @@
                     Newsfeed
                 </button>
             </g:if>
-            <button class="tab-btn ${defaultTab == 'browse' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
+            <button class="tab-btn ${landing == 'browse' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
                     hx-get="/universal/showView"
                     hx-vals='{"template": "courses/browse", "data[courses]": "list:Course", "data[user]": "currentUser", "data[config]": "get:AppConfig:configId", "configId": "${config?.id}"}'
                     hx-target="#content"
@@ -63,7 +66,7 @@
                     onclick="setActiveTab(this)">
                 Browse
             </button>
-            <button class="tab-btn px-4 py-3 text-sm font-medium whitespace-nowrap text-stone-500 min-h-[44px]"
+            <button class="tab-btn ${landing == 'mycourses' ? 'tab-active' : 'text-stone-500'} px-4 py-3 text-sm font-medium whitespace-nowrap min-h-[44px]"
                     hx-get="/universal/showView"
                     hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser", "data[enrollments]": "filter:CourseEnrollment:user.id=currentUserId"}'
                     hx-target="#content"
@@ -156,14 +159,22 @@
 
 <!-- Content area -->
 <div class="max-w-6xl mx-auto px-4">
-    <g:if test="${config?.newsfeedEnabled}">
+    <g:if test="${landing == 'mycourses'}">
+        <div id="content" class="py-4"
+             hx-get="/universal/showView"
+             hx-vals='{"template": "courses/myCourses", "data[user]": "currentUser", "data[enrollments]": "filter:CourseEnrollment:user.id=currentUserId"}'
+             hx-trigger="load"
+             hx-swap="innerHTML">
+        </div>
+    </g:if>
+    <g:elseif test="${config?.newsfeedEnabled}">
         <div id="content" class="py-4"
              hx-get="/universal/showView"
              hx-vals='{"template": "newsfeed/feed", "data[user]": "currentUser", "data[posts]": "list:WallPost"}'
              hx-trigger="load"
              hx-swap="innerHTML">
         </div>
-    </g:if>
+    </g:elseif>
     <g:else>
         <div id="content" class="py-4"
              hx-get="/universal/showView"
