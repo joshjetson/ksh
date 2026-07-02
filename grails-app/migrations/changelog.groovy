@@ -12,4 +12,11 @@ databaseChangeLog = {
     include file: 'add-badge-kind-image.groovy'
     include file: 'add-rewards-engine.groovy'
     include file: 'add-course-image.groovy'
+    include file: 'add-fts.groovy'
+    include file: 'add-announcements-events.groovy'
+    include file: 'add-files-media.groovy'
+    include file: 'add-user-settings-blocks.groovy'
+    include file: 'add-channel-messaging.groovy'
+    include file: 'add-community-wall.groovy'
+    include file: 'add-classrooms.groovy'
 }

@@ -29,6 +29,10 @@ class UserController {
                 render status: 400, text: 'Password is required'
                 return
             }
+            if (rawPassword != params.passwordConfirm) {
+                render status: 422, text: 'Password and confirmation do not match.'
+                return
+            }
 
             Map userParams = new LinkedHashMap(params)
             userParams.password = springSecurityService.encodePassword(rawPassword)
@@ -71,6 +75,10 @@ class UserController {
             Map userParams = new LinkedHashMap(params)
 
             if (userParams.password?.trim()) {
+                if (params.password != params.passwordConfirm) {
+                    render status: 422, text: 'Password and confirmation do not match.'
+                    return
+                }
                 userParams.password = springSecurityService.encodePassword(userParams.password as String)
             } else {
                 userParams.remove('password')
@@ -80,13 +88,21 @@ class UserController {
                 userParams.name = [userParams.firstName, userParams.lastName].findAll().join(' ')
             }
 
+            // Guard: an admin can't strip their OWN admin role (lockout protection).
+            def me = springSecurityService.currentUser as User
+            List<String> newRoles = params.list('roles')
+            if (me?.id == id && !newRoles.contains('ROLE_ADMIN')) {
+                render status: 422, text: "You can't remove your own admin role."
+                return
+            }
+
             def updated = universalDataService.update(User, id, userParams)
             if (!updated) {
                 render status: 400, text: 'Failed to update user'
                 return
             }
 
-            universalDataService.replaceUserRoles(user, params.list('roles'))
+            universalDataService.replaceUserRoles(user, newRoles)
             renderUserList()
         } catch (Exception e) {
             println "ERROR: Error updating user: ${e.message}"

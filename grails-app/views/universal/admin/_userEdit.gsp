@@ -31,6 +31,11 @@
                 <input type="password" id="password" name="password" placeholder="Leave blank to keep current"
                        class="block w-full px-4 py-3 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-base"/>
             </div>
+            <div>
+                <label for="passwordConfirm" class="block text-sm font-medium text-stone-700 mb-1">Confirm password</label>
+                <input type="password" id="passwordConfirm" name="passwordConfirm" placeholder="Repeat the new password"
+                       class="block w-full px-4 py-3 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent text-base"/>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -56,6 +61,13 @@
                            class="rounded border-stone-300 text-rose-700"/>
                     <span class="text-sm text-stone-700">Creator</span>
                     <span class="text-xs text-stone-400">(can create courses)</span>
+                </label>
+                <label class="flex items-center gap-2 min-h-[44px]">
+                    <input type="checkbox" name="roles" value="ROLE_MODERATOR"
+                           ${currentRoles.contains('ROLE_MODERATOR') ? 'checked' : ''}
+                           class="rounded border-stone-300 text-rose-700"/>
+                    <span class="text-sm text-stone-700">Community Leader</span>
+                    <span class="text-xs text-stone-400">(moderates channels + wall)</span>
                 </label>
                 <label class="flex items-center gap-2 min-h-[44px]">
                     <input type="checkbox" name="roles" value="ROLE_ADMIN"

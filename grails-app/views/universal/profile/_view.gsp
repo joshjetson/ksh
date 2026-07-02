@@ -100,7 +100,7 @@
 
     <div id="wall-posts"
          hx-get="/universal/showView"
-         hx-vals='{"template": "profile/wall", "data[user]": "currentUser", "data[wallPosts]": "filter:WallPost:targetUser.id=currentUserId"}'
+         hx-vals='{"template": "community/myWall", "data[user]": "currentUser", "data[walls]": "service:communityService:myWall"}'
          hx-trigger="load"
          hx-swap="innerHTML">
     </div>

@@ -227,4 +227,108 @@ class InstructionParsingSpec extends Specification {
         criterion[0] == 'field'
         criterion[1] == 'value=with=equals'
     }
+
+    // ====================================================================
+    // NEW-GENERATION INSTRUCTIONS (fts / latest / latestCount / distinct / config)
+    // ====================================================================
+
+    void "fts instruction parses correctly"() {
+        when:
+        def parts = "fts:Course:search_fts:q".split(':')
+
+        then:
+        parts[0] == 'fts'
+        parts[1] == 'Course'
+        parts[2] == 'search_fts'
+        parts[3] == 'q'
+        parts.length == 4
+    }
+
+    void "latest instruction parses correctly"() {
+        when:
+        def parts = "latest:CourseEnrollment:enrolledAt:user.id=currentUserId".split(':')
+
+        then:
+        parts[0] == 'latest'
+        parts[1] == 'CourseEnrollment'
+        parts[2] == 'enrolledAt'
+        parts[3] == 'user.id=currentUserId'
+        parts.length == 4
+    }
+
+    void "latest instruction without criteria parses correctly"() {
+        when:
+        def parts = "latest:CourseEnrollment:enrolledAt".split(':')
+
+        then:
+        parts.length == 3
+        parts[2] == 'enrolledAt'
+    }
+
+    void "latestCount instruction parses correctly"() {
+        when:
+        def parts = "latestCount:CourseEnrollment:enrolledAt:course.id=courseId".split(':')
+
+        then:
+        parts[0] == 'latestCount'
+        parts.length == 4
+    }
+
+    void "distinct instruction parses correctly"() {
+        when:
+        def parts = "distinct:Course:tags".split(':')
+
+        then:
+        parts[0] == 'distinct'
+        parts[1] == 'Course'
+        parts[2] == 'tags'
+        parts.length == 3
+    }
+
+    void "config instruction with dotted key parses correctly"() {
+        when: "config keys contain dots but never colons"
+        def parts = "config:ksh.public.url".split(':')
+
+        then:
+        parts[0] == 'config'
+        parts[1] == 'ksh.public.url'
+        parts.length == 2
+    }
+
+    // ====================================================================
+    // NEW CRITERIA VALUE FORMS (in: / yyyy-MM-dd / null)
+    // ====================================================================
+
+    void "in-list criteria value survives comma and equals splitting"() {
+        when: "membership values are pipe-delimited so the comma split is safe"
+        def criteria = "status=in:ACTIVE|COMPLETED,user.id=3"
+        def criteriaParts = criteria.split(',')
+        def firstValue = criteriaParts[0].split('=', 2)[1]
+
+        then:
+        criteriaParts.length == 2
+        firstValue == 'in:ACTIVE|COMPLETED'
+        firstValue.substring(3).split('\\|') == ['ACTIVE', 'COMPLETED']
+    }
+
+    void "empty in-list produces no items (sentinel path)"() {
+        expect: "an empty membership set must match nothing, not everything"
+        'in:'.substring(3).split('\\|').findAll { it } == []
+    }
+
+    void "date-day criteria value matches the yyyy-MM-dd pattern"() {
+        expect:
+        ('2026-07-01' ==~ /\d{4}-\d{2}-\d{2}/)
+        !('today' ==~ /\d{4}-\d{2}-\d{2}/)
+        !('2026-7-1' ==~ /\d{4}-\d{2}-\d{2}/)
+    }
+
+    void "colon-delimiter sharp edge: a value containing a colon mis-splits"() {
+        when: "documented limitation — criteria values must stay colon-free"
+        def parts = "filter:Course:thumbnailSmall=https://example.com/x.png".split(':')
+
+        then: "the URL is broken across segments; this is why colons are banned in values"
+        parts.length > 3
+        parts[2] != 'thumbnailSmall=https://example.com/x.png'
+    }
 }

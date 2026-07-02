@@ -1,10 +1,16 @@
+<%-- Styled button emitting the shared .btn-* classes (src/input.css is the single
+     source of truth for button styling). Model:
+       text    — label
+       type    — button|submit (default button)
+       variant — primary (default) | cta | secondary | danger
+       full    — true for w-full --%>
 <%
     def variants = [
-        primary: 'bg-rose-700 hover:bg-rose-800 text-white focus:ring-rose-500',
-        secondary: 'bg-stone-200 hover:bg-stone-300 text-stone-800 focus:ring-stone-400',
-        danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500'
+        primary  : 'btn-primary',
+        cta      : 'btn-cta',
+        secondary: 'btn-secondary',
+        danger   : 'btn-danger',
     ]
-    def cls = variants[variant ?: 'primary']
+    def cls = variants[variant ?: 'primary'] ?: variants.primary
 %>
-<button type="${type ?: 'button'}"
-        class="px-4 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors text-base ${cls} ${full ? 'w-full' : ''}">${text}</button>
+<button type="${type ?: 'button'}" class="${cls} ${full ? 'w-full' : ''}">${text}</button>

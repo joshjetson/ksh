@@ -2,13 +2,21 @@ package ksh
 
 import grails.testing.gorm.DataTest
 import grails.testing.services.ServiceUnitTest
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import spock.lang.Specification
 
 class UniversalDataServiceSpec extends Specification
     implements ServiceUnitTest<UniversalDataService>, DataTest {
 
+    // The service @Autowires the passwordEncoder bean (registered in resources.groovy
+    // in the real app) — the unit context must provide it too.
+    Closure doWithSpring() {{ ->
+        passwordEncoder(BCryptPasswordEncoder)
+    }}
+
     Class[] getDomainClassesToMock() {
-        [User, Role, UserRole, Course, CourseEnrollment, Review, WallPost, Badge, UserBadge, ScormCmiData]
+        [User, Role, UserRole, Course, CourseEnrollment, Review, Badge, UserBadge, ScormCmiData,
+         Announcement, Event, FileResource, MediaPost, UserSetting, UserBlock]
     }
 
     User teacher
@@ -117,21 +125,6 @@ class UniversalDataServiceSpec extends Specification
         result.course.id == course.id
         result.progress == 0
         result.completedAt == null
-    }
-
-    void "save creates WallPost with user and targetUser"() {
-        when:
-        def result = service.save(WallPost, [
-            user: [id: learner.id],
-            targetUser: [id: teacher.id],
-            message: 'Great teacher!'
-        ])
-
-        then:
-        result != null
-        result.user.id == learner.id
-        result.targetUser.id == teacher.id
-        result.message == 'Great teacher!'
     }
 
     void "save creates Review with all fields"() {
@@ -477,5 +470,216 @@ class UniversalDataServiceSpec extends Specification
     void "findByOrGet returns null when not found"() {
         expect:
         service.findByOrGet(Course, 'shortTitle', 'Nonexistent') == null
+    }
+
+    // ====================================================================
+    // ANNOUNCEMENT / EVENT BASELINES
+    // ====================================================================
+
+    void "save creates Announcement with author"() {
+        when:
+        def result = service.save(Announcement, [title: 'Fall term opens', body: 'Enroll now', pinned: 'true'],
+                                  [author: teacher.id])
+
+        then:
+        result != null
+        result.pinned
+        result.author.id == teacher.id
+    }
+
+    void "save creates Event and rejects an unknown color"() {
+        when:
+        def ok = service.save(Event, [title: 'Live class', startsAt: '2026-07-15T18:00', color: 'sky'])
+        def bad = service.save(Event, [title: 'Bad', startsAt: '2026-07-15T18:00', color: 'chartreuse'])
+
+        then:
+        ok != null
+        !ok.allDay
+        bad == null   // inList constraint fails loudly at the service boundary
+    }
+
+    // ====================================================================
+    // FILE / MEDIA BASELINES (declarative multipart binding: byte[] +
+    // ContentType + FileName params, as extractParams() injects them)
+    // ====================================================================
+
+    void "save creates FileResource from multipart-shaped params"() {
+        when:
+        def result = service.save(FileResource, [
+            title: 'Syllabus', category: 'Handbook',
+            file: 'PDFBYTES'.bytes, fileContentType: 'application/pdf', fileFileName: 'syllabus.pdf'])
+
+        then:
+        result != null
+        result.hasFile()
+        result.fileContentType == 'application/pdf'
+    }
+
+    void "save creates link-only FileResource without an upload"() {
+        expect:
+        service.save(FileResource, [title: 'Naver dictionary', externalUrl: 'https://dict.naver.com']) != null
+    }
+
+    void "save creates MediaPost with author override"() {
+        when:
+        def result = service.save(MediaPost, [
+            caption: 'Class trip', image: 'PNGBYTES'.bytes,
+            imageContentType: 'image/png', imageFileName: 'trip.png'], [author: teacher.id])
+
+        then:
+        result != null
+        result.author.id == teacher.id
+    }
+
+    void "save rejects MediaPost without an image"() {
+        expect: "image is the point of a media post — constraint fails loudly"
+        service.save(MediaPost, [caption: 'No photo'], [author: teacher.id]) == null
+    }
+
+    // ====================================================================
+    // PRIVACY BASELINES (UserSetting / UserBlock validators)
+    // ====================================================================
+
+    void "save creates UserSetting with forced owner"() {
+        when:
+        def result = service.save(UserSetting, [discoverable: 'true'], [user: learner.id])
+
+        then:
+        result != null
+        result.discoverable
+        result.user.id == learner.id
+    }
+
+    void "UserBlock rejects blocking yourself"() {
+        expect:
+        service.save(UserBlock, [blocked: [id: learner.id]], [owner: learner.id]) == null
+    }
+
+    void "UserBlock allows blocking another student once"() {
+        given:
+        def other = new User(username: 'other1', password: 'pass123', roleType: 'learner').save(failOnError: true, flush: true)
+
+        expect: "first block works; a duplicate violates unique(owner,blocked)"
+        service.save(UserBlock, [blocked: [id: other.id]], [owner: learner.id]) != null
+        service.save(UserBlock, [blocked: [id: other.id]], [owner: learner.id]) == null
+    }
+
+    // ====================================================================
+    // DISTINCT VALUES BASELINES
+    // ====================================================================
+
+    void "distinctValues returns unique non-null values ascending"() {
+        given:
+        new Course(shortTitle: 'B Course', longTitle: 'B', costKCredits: 5, pointReward: 0, creator: teacher, tags: 'beta').save(failOnError: true, flush: true)
+        new Course(shortTitle: 'A Course', longTitle: 'A', costKCredits: 5, pointReward: 0, creator: teacher, tags: 'alpha').save(failOnError: true, flush: true)
+        new Course(shortTitle: 'C Course', longTitle: 'C', costKCredits: 5, pointReward: 0, creator: teacher, tags: 'alpha').save(failOnError: true, flush: true)
+
+        when:
+        def values = service.distinctValues(Course, 'tags')
+
+        then:
+        values == ['alpha', 'beta']
+    }
+
+    void "distinctValues returns empty for null inputs"() {
+        expect:
+        service.distinctValues(null, 'tags') == []
+        service.distinctValues(Course, null) == []
+    }
+
+    // ====================================================================
+    // UPSERT BATCH BASELINES
+    // ====================================================================
+
+    void "upsertBatch inserts new records and updates existing by natural key"() {
+        when: "two new courses arrive"
+        def result = service.upsertBatch(Course, [
+            [shortTitle: 'Batch A', longTitle: 'Batch A Long', costKCredits: '1', pointReward: '0', creator: [id: teacher.id]],
+            [shortTitle: 'Batch B', longTitle: 'Batch B Long', costKCredits: '2', pointReward: '0', creator: [id: teacher.id]],
+        ], ['shortTitle'])
+
+        then:
+        result.inserted == 2
+        result.updated == 0
+
+        when: "one of them is re-submitted with a change"
+        def result2 = service.upsertBatch(Course, [
+            [shortTitle: 'Batch A', longTitle: 'Batch A Revised', costKCredits: '9', pointReward: '0', creator: [id: teacher.id]],
+        ], ['shortTitle'])
+
+        then: "it updates instead of duplicating"
+        result2.inserted == 0
+        result2.updated == 1
+        Course.findByShortTitle('Batch A').longTitle == 'Batch A Revised'
+        Course.countByShortTitle('Batch A') == 1
+    }
+
+    void "upsertBatch skips records with a null or empty natural key"() {
+        when:
+        def result = service.upsertBatch(Course, [
+            [shortTitle: '', longTitle: 'No Key', costKCredits: '0', pointReward: '0', creator: [id: teacher.id]],
+        ], ['shortTitle'])
+
+        then:
+        result.inserted == 0
+        result.updated == 0
+    }
+
+    // ====================================================================
+    // PASSWORD BASELINES (encode-at-the-chokepoint)
+    // ====================================================================
+
+    void "updatePassword encodes a raw password"() {
+        when:
+        def ok = service.updatePassword(learner, 'newSecret123')
+
+        then:
+        ok
+        learner.password.startsWith('$2')
+        learner.password != 'newSecret123'
+    }
+
+    void "updatePassword is a no-op for blank password"() {
+        given:
+        def before = learner.password
+
+        expect: "an edit form leaving the field empty keeps the current password"
+        !service.updatePassword(learner, '')
+        !service.updatePassword(learner, '   ')
+        !service.updatePassword(null, 'whatever')
+        learner.password == before
+    }
+
+    void "updatePassword passes through an already-hashed value unchanged"() {
+        given: "a value that is already a bcrypt hash"
+        service.updatePassword(learner, 'firstSecret')
+        def hashed = learner.password
+
+        when: "the same hash is submitted again (idempotence)"
+        service.updatePassword(learner, hashed)
+
+        then:
+        learner.password == hashed
+    }
+
+    // ====================================================================
+    // FTS GUARD PATHS (the Postgres query itself is exercised in dev —
+    // these cover the sanitization/fallback behavior)
+    // ====================================================================
+
+    void "ftsSearch rejects an invalid column name"() {
+        expect: "column names failing the \\w+ validation are refused outright"
+        service.ftsSearch(Course, 'search_fts; DROP TABLE', 'korean') == []
+        service.ftsSearch(Course, null, 'korean') == []
+    }
+
+    void "ftsSearch falls back to list for a blank term"() {
+        expect:
+        service.ftsSearch(Course, 'search_fts', '  ').size() == Course.count()
+    }
+
+    void "ftsSearch returns empty when the term sanitizes to nothing"() {
+        expect: "punctuation-only input produces no tsquery tokens"
+        service.ftsSearch(Course, 'search_fts', '!!! ???') == []
     }
 }

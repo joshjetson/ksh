@@ -64,10 +64,17 @@ class DashboardService {
         List trend = buildTrend(spec)
 
         // --- Messages needing a reply ---
-        int awaiting = Conversation.countByAwaitingReply(true)
-        List awaitingList = Conversation.findAllByAwaitingReply(true, [sort: 'lastMessageAt', order: 'desc', max: 8]).collect {
-            [id: it.id, student: (it.student?.name ?: it.student?.username)]
+        // A DM "awaits reply" when its latest message was sent by a non-staff member.
+        List awaitingAll = []
+        Channel.findAllByVisibility('dm').each { ch ->
+            def last = Message.createCriteria().get { eq('channel', ch); order('dateCreated', 'desc'); maxResults(1) }
+            if (last && last.author && !isStaff(last.author)) {
+                awaitingAll << [id: ch.id, student: (last.author.name ?: last.author.username), time: last.dateCreated]
+            }
         }
+        awaitingAll = awaitingAll.sort { -(it.time?.time ?: 0L) }
+        int awaiting = awaitingAll.size()
+        List awaitingList = awaitingAll.take(8).collect { [id: it.id, student: it.student] }
 
         // --- Engagement ---
         int badgesAwarded = UserBadge.count()
@@ -103,8 +110,8 @@ class DashboardService {
         int completed = mine.count { it.completedAt != null } as int
         int avgProgress = total ? Math.round(mine.sum { it.progress ?: 0 } / (double) total) as int : 0
         int badges = UserBadge.countByUser(me)
-        Conversation convo = Conversation.findByStudent(me)
-        int messageCount = convo ? Message.countByConversation(convo) : 0
+        def myDms = ChannelMembership.createCriteria().list { eq('user', me); channel { eq('visibility', 'dm') } }*.channel
+        int messageCount = myDms ? (Message.countByChannelInList(myDms) as int) : 0
 
         return [
             name        : (me.name ?: me.username),

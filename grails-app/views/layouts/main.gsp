@@ -27,17 +27,12 @@
     <asset:link rel="manifest" href="manifest.json"/>
 
     <asset:stylesheet src="application.css"/>
-    <style>
-        .htmx-indicator { display: none; }
-        .htmx-request .htmx-indicator { display: inline-block; }
-        .htmx-request button { opacity: 0.6; cursor: not-allowed; }
-    </style>
 
     <g:layoutHead/>
 </head>
 
-<body class="min-h-screen" style="background-color: #ffe4c4;">
-
+<body class="min-h-screen bg-cream-200">
+    <div id="htmx-indicator" aria-hidden="true"></div>
     <g:layoutBody/>
 
     <asset:javascript src="application.js"/>

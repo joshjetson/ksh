@@ -19,6 +19,9 @@ class ScormServiceSpec extends Specification
         teacherUser = new User(username: 'teacher1', password: 'pass', roleType: 'teacher').save(failOnError: true, flush: true)
         student = new User(username: 'student1', password: 'pass', roleType: 'learner').save(failOnError: true, flush: true)
         course = new Course(shortTitle: 'C1', longTitle: 'Course 1', costKCredits: 0, pointReward: 0, creator: teacherUser).save(failOnError: true, flush: true)
+        // Completion path calls rewardService.grantForCompletion; reward mechanics
+        // are covered by their own spec, so a stub keeps this one focused on CMI.
+        service.rewardService = Stub(RewardService)
     }
 
     // ====================================================================
@@ -137,7 +140,7 @@ class ScormServiceSpec extends Specification
 
         then:
         def updated = CourseEnrollment.get(enrollment.id)
-        updated.progress == 0
+        updated.progress == 50   // coarse status floor: 'incomplete' means at least halfway
         updated.completedAt == null
     }
 

@@ -78,7 +78,8 @@
             <g:if test="${stats.messages.awaitingList}">
                 <div class="space-y-1">
                     <g:each in="${stats.messages.awaitingList}" var="conv">
-                        <button hx-get="/messages/thread?conversationId=${conv.id}"
+                        <button hx-get="/universal/showView"
+                                hx-vals='{"template": "messaging/channel", "data[view]": "service:messageService:channelView", "data[user]": "currentUser", "channelId": "${conv.id}"}'
                                 hx-target="#content"
                                 hx-swap="innerHTML"
                                 class="w-full text-left px-3 py-2 rounded-lg hover:bg-stone-50 flex items-center justify-between min-h-[44px]">

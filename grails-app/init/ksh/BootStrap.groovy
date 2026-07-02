@@ -12,6 +12,7 @@ class BootStrap {
         bootstrapService.createDevelopmentUsers()
         bootstrapService.createSampleCourses()
         bootstrapService.createSampleBadges()
+        bootstrapService.createDefaultChannels()
     }
 
     def destroy = {

@@ -9,6 +9,26 @@ class KshTagLib {
 
     static namespace = 'ksh'
 
+    // Event color → Tailwind classes for the calendar chip and the dot marker.
+    // The literal class strings are scanned by the build (the .groovy content glob),
+    // so they survive purge even though they're selected dynamically.
+    static final Map EVENT_COLORS = [
+        rose:    [chip: 'bg-rose-100 text-rose-700 border-rose-200',          dot: 'bg-rose-500'],
+        gold:    [chip: 'bg-gold-500/15 text-gold-700 border-gold-300',       dot: 'bg-gold-500'],
+        sky:     [chip: 'bg-sky-100 text-sky-700 border-sky-200',             dot: 'bg-sky-500'],
+        amber:   [chip: 'bg-amber-100 text-amber-800 border-amber-200',       dot: 'bg-amber-500'],
+        emerald: [chip: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500'],
+        violet:  [chip: 'bg-violet-100 text-violet-700 border-violet-200',    dot: 'bg-violet-500'],
+    ]
+
+    private static Map colorEntry(def key) { (EVENT_COLORS[key as String] ?: EVENT_COLORS.rose) as Map }
+
+    /** ksh:eventChip(color:'gold') → chip bg/text/border classes for a calendar event. */
+    def eventChip = { attrs -> out << colorEntry(attrs.color).chip }
+
+    /** ksh:eventDot(color:'gold') → small dot/marker bg class. */
+    def eventDot = { attrs -> out << colorEntry(attrs.color).dot }
+
     /**
      * A CSS bar chart for an enrollment/usage trend.
      * Attr: data = List of [label: String, count: Number]. No external chart lib.
@@ -76,9 +96,10 @@ class KshTagLib {
     def roleBadge = { attrs ->
         String role = (attrs.role ?: '').toString()
         Map map = [
-            ROLE_ADMIN  : ['Admin',   'bg-rose-100 text-rose-700'],
-            ROLE_TEACHER: ['Teacher', 'bg-sky-100 text-sky-800'],
-            ROLE_USER   : ['Student', 'bg-stone-100 text-stone-600']
+            ROLE_ADMIN    : ['Admin',            'bg-rose-100 text-rose-700'],
+            ROLE_TEACHER  : ['Teacher',          'bg-sky-100 text-sky-800'],
+            ROLE_MODERATOR: ['Community Leader', 'bg-gold-500/15 text-gold-700'],
+            ROLE_USER     : ['Student',          'bg-stone-100 text-stone-600']
         ]
         def entry = map[role] ?: [role, 'bg-stone-100 text-stone-600']
         out << "<span class=\"inline-block text-xs font-medium px-2 py-0.5 rounded-full ${entry[1]}\">${entry[0]}</span>"

@@ -28,6 +28,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <g:render template="/universal/components/input" model="[name: 'username', label: 'Username', required: true]"/>
             <g:render template="/universal/components/input" model="[name: 'password', label: 'Password', type: 'password', required: true]"/>
+            <g:render template="/universal/components/input" model="[name: 'passwordConfirm', label: 'Confirm password', type: 'password', required: true]"/>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -50,6 +51,11 @@
                     <input type="checkbox" name="roles" value="ROLE_TEACHER" class="rounded border-stone-300 text-rose-700"/>
                     <span class="text-sm text-stone-700">Creator</span>
                     <span class="text-xs text-stone-400">(can create courses)</span>
+                </label>
+                <label class="flex items-center gap-2 min-h-[44px]">
+                    <input type="checkbox" name="roles" value="ROLE_MODERATOR" class="rounded border-stone-300 text-rose-700"/>
+                    <span class="text-sm text-stone-700">Community Leader</span>
+                    <span class="text-xs text-stone-400">(moderates channels + wall)</span>
                 </label>
                 <label class="flex items-center gap-2 min-h-[44px]">
                     <input type="checkbox" name="roles" value="ROLE_ADMIN" class="rounded border-stone-300 text-rose-700"/>

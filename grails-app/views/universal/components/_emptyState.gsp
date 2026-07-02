@@ -3,4 +3,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="${icon ?: 'M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4'}"/>
     </svg>
     <p class="mt-3 text-sm text-stone-500">${message ?: 'Nothing here yet'}</p>
+    <g:if test="${hint}">
+        <p class="mt-1 text-xs text-stone-400">${hint}</p>
+    </g:if>
 </div>

@@ -1,36 +1,56 @@
 package ksh
 
+import org.springframework.security.core.context.SecurityContextHolder
+
 /**
- * A single message within a Conversation. The sender is always force-set
- * server-side in MessagesController.send() (never bound from the request),
- * so a client can't spoof who a message is from. The parent conversation's
- * lastMessageAt / awaitingReply are updated by the controller right after save
- * — kept off an afterInsert hook to avoid mutating during the flush.
+ * A chat message in a Channel. Posted via generic save (author force-set by
+ * OWNERSHIP_FIELDS → anti-spoof); read only through MessageService.channelView
+ * (access-checked). The channel validator below enforces POST access: a staff-only
+ * channel rejects a non-manager poster.
+ *
+ * It reads the ambient security context (not an injected service) because domain
+ * instances created via `newInstance()` in the generic save path are NOT autowired —
+ * SecurityContextHolder is a thread-local and works regardless.
  */
 class Message {
 
-    Conversation conversation
-    User sender
-    String body
-    Date readAt   // reserved for future read-receipt tracking
+    Channel channel
+    User    author
+    String  body
 
     Date dateCreated
-
-    static belongsTo = [conversation: Conversation]
+    Date lastUpdated
 
     static constraints = {
-        conversation nullable: false
-        sender nullable: false
-        body nullable: false, blank: false, maxSize: 4000
-        readAt nullable: true
+        body    nullable: false, blank: false, maxSize: 4000
+        author  nullable: true
+        channel nullable: false, validator: { Channel ch, Message msg ->
+            if (ch?.visibility == 'staff' && !Message.posterIsManager()) return 'channel.staffOnly'
+            // Muted or banned in this channel → can't post.
+            Long uid = Message.posterId()
+            if (uid && ch) {
+                def cm = ChannelMembership.findByChannelAndUser(ch, User.load(uid))
+                if (cm && cm.status in ['muted', 'banned']) return 'channel.muted'
+            }
+        }
     }
 
     static mapping = {
         table 'message'
-        conversation column: 'conversation_id'
-        sender column: 'sender_id'
-        body type: 'text'
-        readAt column: 'read_at'
-        dateCreated column: 'date_created'
+        body  type: 'text'
     }
+
+    /** True if the current request's user is teacher/admin (for staff-channel post gating). */
+    static boolean posterIsManager() {
+        def roles = SecurityContextHolder.context?.authentication?.authorities*.authority ?: []
+        roles.contains('ROLE_ADMIN') || roles.contains('ROLE_TEACHER')
+    }
+
+    /** Current request's user id (from the security context), or null if not authed. */
+    static Long posterId() {
+        def p = SecurityContextHolder.context?.authentication?.principal
+        (p != null && p.hasProperty('id')) ? (p.id as Long) : null
+    }
+
+    String toString() { "Message ${id}" }
 }

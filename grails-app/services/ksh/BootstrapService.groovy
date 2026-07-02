@@ -18,10 +18,21 @@ class BootstrapService {
     }
 
     def createRoles() {
-        if (!Role.count()) {
-            Role.findOrSaveWhere(authority: 'ROLE_ADMIN')
-            Role.findOrSaveWhere(authority: 'ROLE_USER')
-            Role.findOrSaveWhere(authority: 'ROLE_TEACHER')
+        // Per-authority (no count() guard) so existing deployments pick up new roles.
+        Role.findOrSaveWhere(authority: 'ROLE_ADMIN')
+        Role.findOrSaveWhere(authority: 'ROLE_USER')
+        Role.findOrSaveWhere(authority: 'ROLE_TEACHER')
+        Role.findOrSaveWhere(authority: 'ROLE_MODERATOR')   // community leaders — channel moderation
+    }
+
+    def createDefaultChannels() {
+        // Guard on non-dm channels — migrated DM threads must not suppress seeding.
+        if (!Channel.countByVisibilityNotEqual('dm')) {
+            new Channel(name: '전체 라운지 / School Lounge', description: 'Open chat for the whole school',
+                        visibility: 'school', sortOrder: 0).save(failOnError: true)
+            new Channel(name: 'Staff room', description: 'Teachers and admins only',
+                        visibility: 'staff', sortOrder: 10).save(failOnError: true)
+            log.info("Created default channels")
         }
     }
 
