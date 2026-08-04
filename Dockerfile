@@ -32,9 +32,23 @@ FROM amazoncorretto:11-alpine AS runtime
 
 ARG COMMIT_HASH
 
+# JAVA_OPTS only takes effect because the ENTRYPOINT below expands it — `java -jar` does
+# NOT read it (only Spring Boot's script launcher does), so the old CMD ran with the JVM's
+# ergonomic default: 25% of HOST RAM, ~3.9g on the 15.5GB deploy box. Confirmed live, the
+# container's command line was bare `java -jar /app/app.jar`.
+#
+# Heap 1g, not the never-applied 512m — switching that on for the first time would be an
+# untested tightening; measured prod RSS is ~874MB.
+#
+# DNS: the JDBC pool re-resolves ksh-postgres on every reconnect and maxAge (10 min)
+# recycles connections forever even at zero traffic, while the JVM caches a good lookup
+# for only 30s. On 2026-07-27 a co-tenant container OOM-starved the host, dockerd's
+# embedded resolver started failing, and this app logged UnknownHostException from the
+# pool cleaner. preferIPv4Stack matters more here than on the glibc images: musl fires A
+# and AAAA in parallel, and asking for A only sidesteps that entirely.
 ENV LANG=C.UTF-8 \
     GRAILS_ENV=production \
-    JAVA_OPTS="-Xmx512m -Xms256m" \
+    JAVA_OPTS="-Xms256m -Xmx1g -Djava.net.preferIPv4Stack=true -Dnetworkaddress.cache.ttl=60 -Dnetworkaddress.cache.negative.ttl=0" \
     COMMIT_HASH=$COMMIT_HASH
 
 LABEL service="korean-school-house"
@@ -66,9 +80,17 @@ VOLUME ["/app/storage", "/app/data"]
 # Switch to non-root user
 USER app
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/ || exit 1
+# Health check. '/' renders without touching the database, so an HTTP-only check reports
+# healthy while the app cannot reach Postgres at all — that is how the 2026-07-27 DNS
+# outage stayed invisible. Also assert the DB host still resolves, parsed out of
+# DATABASE_URL so nothing is hardcoded; skipped when DATABASE_URL is unset (dev/H2).
+# Detection only — `--restart unless-stopped` does not act on health, so it shows up in
+# `docker ps` rather than self-healing.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -fsS http://localhost:8080/ >/dev/null || exit 1; \
+        DBH=$(printf '%s' "${DATABASE_URL:-}" | sed -n 's#^jdbc:postgresql://\([^:/?]*\).*#\1#p'); \
+        [ -z "$DBH" ] || getent hosts "$DBH" >/dev/null || exit 1
 
-# Start the application
-CMD ["java", "-jar", "/app/app.jar"]
+# Start the application. Shell form so $JAVA_OPTS is expanded; `exec` so the JVM still
+# becomes PID 1 and receives SIGTERM directly on `docker stop`.
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
